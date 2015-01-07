@@ -7,7 +7,7 @@
 
 
 import Network (listenOn, withSocketsDo, accept, PortID(..), Socket)
-import System (getArgs)
+import System.Environment (getArgs)
 import System.IO (hSetBuffering, hGetLine, hPutStrLn, BufferMode(..), Handle)
 import Control.Concurrent (forkIO)
 

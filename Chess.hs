@@ -21,7 +21,7 @@
 --https://hackage.haskell.org/package/grid-2.1.1/docs/Math-Geometry-Grid.html
 --import Graphics.UI.GLUT hiding (Color)
 --import Control.Monad (when)
-import Data.Vector ((//), (!), fromList, Vector)
+--import Data.Vector ((//), (!), fromList, Vector)
 import Data.Function (on)
 
 import qualified Data.Set as Set
@@ -40,10 +40,10 @@ import Text.Printf
 ---------------------------------------------------------------------------------------------------
 -- Types
 ---------------------------------------------------------------------------------------------------
-data Piece = Pawn | Rook | Bishop | Knight | Queen | King deriving (Eq, Show, Enum)
+data Piece  = Pawn | Rook | Bishop | Knight | Queen | King deriving (Eq, Show, Enum)
 data CColor = Black | White deriving (Eq, Show, Enum) -- TODO: Rename (?)
-data Square = Square Piece CColor | Empty deriving (Eq, Show)
-type Board = Vector (Vector Square)
+data Square = Square Piece CColor deriving (Eq, Show)
+data Board  = [] --Vector (Vector Square)
 
 
 

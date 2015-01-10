@@ -40,79 +40,18 @@ import Text.Printf
 ---------------------------------------------------------------------------------------------------
 -- Types
 ---------------------------------------------------------------------------------------------------
-data Piece  = Pawn | Rook | Bishop | Knight | Queen | King deriving (Eq, Show, Enum)
-data CColor = Black | White deriving (Eq, Show, Enum) -- TODO: Rename (?)
-data Square = Square Piece CColor deriving (Eq, Show)
-data Board  = [] --Vector (Vector Square)
 
 
 
 ---------------------------------------------------------------------------------------------------
 -- Constants
 ---------------------------------------------------------------------------------------------------
-pieces :: [[Square]]
-pieces = let rearguard = [Rook, Knight, Bishop, King, Queen, Bishop, Knight, Rook]
-             vanguard  = replicate 8 Pawn
-             black = map $ flip Square White
-             white = map $ flip Square Black
-         in white rearguard :
-            white vanguard :
-            replicate 8 Empty :
-            replicate 8 Empty :
-            replicate 8 Empty :
-            replicate 8 Empty :
-            black vanguard :
-            black rearguard : []
-
-board :: Board
-board = fromList $ map fromList pieces
 
 
 
 ---------------------------------------------------------------------------------------------------
 -- Logic
 ---------------------------------------------------------------------------------------------------
--- Queries and updates ----------------------------------------------------------------------------
---
--- TODO: Simplify (perhaps with lenses)
--- TODO: More powerful query and update functions
-move :: Board -> (Int, Int) -> (Int, Int) -> Board
-move board (fx, fy) (tx, ty) = let from = (board ! fy) // [(fx, at board tx ty)]
-                                   to   = (board ! ty) // [(tx, at board fx fy)]
-                               in board // [(ty, from), (fy, to)]
-
---
-at :: Board -> Int -> Int -> Square
-at board row col = board ! row ! col
-
-
--- Lenses -----------------------------------------------------------------------------------------
--- 
--- TODO: Spelling (?)
-colorOf :: Square -> CColor
-colorOf (Square _ col) = col
-
--- 
-piece :: Square -> Piece
-piece (Square piece _) = piece
-
-
--- Visualisation ----------------------------------------------------------------------------------
---
--- TODO: Simplify
-visualise :: Square -> String
-visualise (Square piece color) = case piece of
-	Pawn   -> ["♟♙" !! index]
-	Rook   -> ["♜♖" !! index]
-	Bishop -> ["♝♗" !! index]
-	Knight -> ["♞♘" !! index]
-	Queen  -> ["♛♕" !! index]
-	King   -> ["♚♔" !! index]
-	where indexOf Black = 0
-	      indexOf White = 1
-	      index = indexOf color
-
-
 data Language = Java | C | Python | Haskell deriving (Eq, Ord, Show)
 contrast :: Language -> Language -> IO ()
 contrast a b = printf "%s is a piece of shit compared to %s.\n" (show $ min a b) (show $ max a b)

@@ -24,6 +24,7 @@ module Core where
 --https://hackage.haskell.org/package/grid-2.1.1/docs/Math-Geometry-Grid.html
 --import Data.Vector ((//), (!), fromList, Vector)
 import Data.Function (on)
+import Control.Monad (liftM)
 
 import qualified Data.Set as Set
 
@@ -36,9 +37,11 @@ import qualified Data.Set as Set
 -- Types
 ---------------------------------------------------------------------------------------------------
 data Piece  = Pawn | Rook | Bishop | Knight | Queen | King deriving (Eq, Show, Enum)
-data Color  = Black | White deriving (Eq, Show, Enum) -- TODO: Rename (?)
-data Square = Square Piece Color deriving (Eq, Show)
+data Colour = Black | White deriving (Eq, Show, Enum) -- TODO: Rename (?)
+data Square = Square Piece Colour deriving (Eq, Show)
 type Board  = [[Maybe Square]] --Vector (Vector Square)
+
+-- TODO: Consider names for types (Square = Maybe Piece would make more sense)
 
 
 
@@ -69,20 +72,18 @@ black = "♖♘♗♕♔♙" -- All black pieces
 -- TODO: Simplify (perhaps with lenses)
 -- TODO: More powerful query and update functions
 move :: Board -> (Int, Int) -> (Int, Int) -> Board
-move board (fx, fy) (tx, ty) = let from = (board ! fy) // [(fx, at board tx ty)]
-                                   to   = (board ! ty) // [(tx, at board fx fy)]
-                               in board // [(ty, from), (fy, to)]
+move board (fx, fy) (tx, ty) = [[Nothing]]
 
 --
-at :: Board -> Int -> Int -> Square
-at board row col = board ! row ! col
+at :: Board -> Int -> Int -> Maybe Square
+at board row col = board !! row !! col
 
 
 -- Lenses -----------------------------------------------------------------------------------------
 -- 
 -- TODO: Spelling (?)
-color :: Square -> Color
-color (Square _ col) = col
+colour :: Square -> Colour
+colour (Square _ col) = col
 
 -- 
 piece :: Square -> Piece
@@ -93,7 +94,7 @@ piece (Square piece _) = piece
 --
 -- TODO: Simplify
 showPiece :: Square -> String
-showPiece (Square piece color) = case piece of
+showPiece (Square piece colour) = case piece of
 	Pawn   -> ["♟♙" !! index]
 	Rook   -> ["♜♖" !! index]
 	Bishop -> ["♝♗" !! index]
@@ -102,34 +103,33 @@ showPiece (Square piece color) = case piece of
 	King   -> ["♚♔" !! index]
 	where indexOf Black = 0
 	      indexOf White = 1
-	      index = indexOf color
+	      index = indexOf colour
 
 --
 -- TODO: Simplify
 -- TODO: Maybe Square (?)
 -- TODO: Char or string
+-- TODO: Only allow spaces for empty squares (?)
+-- TODO: Define with guards for the constructor arguments and monadic chaining (>>=)
 readPiece :: Char -> Maybe Square
-readPiece c
-	| c `elem` "♟♙" = Just $ Square colour Pawn
-	| c `elem` "♜♖" = Just $ Square colour Rook
-	| c `elem` "♝♗" = Just $ Square colour Bishop
-	| c `elem` "♞♘" = Just $ Square colour Knight
-	| c `elem` "♛♕" = Just $ Square colour Queen
-	| c `elem` "♚♔" = Just $ Square colour King
-	| otherwise = Nothing
-	where colour
-		| c `elem` white = White
-		| c `elem` black = Black
-		| otherwise      = error "Invalid piece" -- This will never happen
+readPiece c = ((liftM (,)) col) >>= (liftM ($ piece)) >>= (return . uncurry Square)
+  where piece
+          | c `elem` "♟♙" = Just Pawn
+          | c `elem` "♜♖" = Just Rook
+          | c `elem` "♝♗" = Just Bishop
+          | c `elem` "♞♘" = Just Knight
+          | c `elem` "♛♕" = Just Queen
+          | c `elem` "♚♔" = Just King
+          | otherwise = Nothing
+        col
+          | c `elem` white = Just White
+          | c `elem` black = Just Black
+          | otherwise      = Nothing
 
 
 
 readBoard :: String -> Board
-readBoard str = map 
-
-
-board :: Board
-board = fromList $ map fromList pieces
+readBoard str = map (map readPiece) str
 
 
 ---------------------------------------------------------------------------------------------------

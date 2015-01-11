@@ -127,18 +127,54 @@ notAlly a b = not $ hasAlly a b
 validMove :: Board -> Maybe Square -> Int -> Int -> Bool
 validMove board from x' y' = inside x' y' && notAlly from (at board x' y')
 
+
+-- Steps -------------------------------------------------------------------------------------------
+-- These function (values?) yield lists of relative steps for each type of piece
+rook =
+bishop =
+knight =
+queen =
+king =
+pawn =
+
+-- Initial row of a pawn
+startrow :: Square -> Int
+startrow pawn = case colour pawn of
+	White -> 1
+	Black -> 6
+
+
+-- TODO: transforming functions taking Square to function taking col row and board
+
+-- Creates paths based on a list of (dx, dy) pairs
+-- These pairs indicate the direction of each path
+-- Each path is subsequently truncated at the first invalid step
+-- The paths are then flattened into a single list of absolute (col, row) coordinates
+createPaths :: Board -> [(Int, Int)] -> [(Int, Int)]
+createPaths deltas = concat $ map (\ delta -> takeValid delta $ path [1..7] delta) deltas
+
+
+--
+pieceMoves :: Square -> [(Int, Int)]
+pieceMoves piece = case piece of
+	Square Rook _   -> createPaths [(-1, 0), (1, 0), (0, -1), (0, 1)] -- TODO: Extract path logic
+	Square Bishop _ -> createPaths [(-1, -1), (1, 1), (1, -1), (-1, 1)]
+	Square Knight _ -> filterInvalid [(row+dx, col+dy) | dx <- [-1, 1, -2, 2], dy <- [-1, 1, -2, 2], dx /= dy ]
+	Square Queen _  -> concat . map createPaths $ [[(-1, 0), (1, 0), (0, -1), (0, 1)], [(-1, -1), (1, 1), (1, -1), (-1, 1)]]
+	Square King _   -> filterInvalid [(row+dx, col+dy) | dx <- [-1..1], dy <- [-1..1], dx /= 0 || dy /= 0] -- TODO: Add two steps logic
+	Square Pawn _   -> filterInvalid [(row+dx, col+1) | dx <- [-1, 0, 1], dx == 0 || hasEnemy square (at board (row+dx) (col+1))]
+
 --
 -- TODO: Extract auxiliary definitions
+-- TODO: Use Complex Int Int (?)
 moves :: Board -> Int -> Int -> [(Int, Int)]
-moves board row col = maybe [] pieceMoves $ square
-	where pieceMoves piece = case piece of
-		Square Rook _   -> createPaths [(-1, 0), (1, 0), (0, -1), (0, 1)] -- TODO: Extract path logic
-		Square Bishop _ -> createPaths [(-1, -1), (1, 1), (1, -1), (-1, 1)]
-		Square Knight _ -> filterInvalid [(row+dx, col+dy) | dx <- [-1, 1, -2, 2], dy <- [-1, 1, -2, 2], dx /= dy ]
-		Square Queen _  -> concat . map createPaths $ [[(-1, 0), (1, 0), (0, -1), (0, 1)], [(-1, -1), (1, 1), (1, -1), (-1, 1)]]
-		Square King _   -> filterInvalid [(row+dx, col+dy) | dx <- [-1..1], dy <- [-1..1], dx /= 0 || dy /= 0]
-		Square Pawn _   -> filterInvalid [(row+dx, col+1) | dx <- [-1, 0, 1], dx == 0 || hasEnemy square (at board (row+dx) (col+1))]
-	      square = at board row col
+moves board row col = let square = at board row col
+                          validStep (dx, dy) (x, y) = validMove board square x y && (notInside (x-dx) (y-dy) || notEnemy square (at board (x-dx) (y-dy)))
+                          takeValid delta steps = takeWhile (validStep delta) $ steps
+                          path range (dx, dy) = map (\ a -> (dx*a, dy*a)) range -- TODO: Extract path logic
+                          
+                          filterInvalid = filter (uncurry $ validMove board square)
+                      in maybe [] pieceMoves $ square
 	      validStep (dx, dy) (x, y) = validMove board square x y && (notInside (x-dx) (y-dy) || notEnemy square (at board (x-dx) (y-dy)))
 	      takeValid delta steps = takeWhile (validStep delta) $ steps
 	      path range (dx, dy) = map (\ a -> (dx*a, dy*a)) range -- TODO: Extract path logic

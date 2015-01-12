@@ -18,18 +18,18 @@ import pygame
 
 
 glyphs = { '♙': 'whitePawn',
-          '♖': 'whiteRook',
-          '♘': 'whiteKnight',
-          '♗': 'whiteBishop',
-          '♕': 'whiteQueen',
-          '♔': 'whiteKing',
+           '♖': 'whiteRook',
+           '♘': 'whiteKnight',
+           '♗': 'whiteBishop',
+           '♕': 'whiteQueen',
+           '♔': 'whiteKing',
 
-          '♟': 'blackPawn',
-          '♜': 'blackRook',
-          '♞': 'blackKnight',
-          '♝': 'blackBishop',
-          '♛': 'blackQueen',
-          '♚': 'blackKing' }
+           '♟': 'blackPawn',
+           '♜': 'blackRook',
+           '♞': 'blackKnight',
+           '♝': 'blackBishop',
+           '♛': 'blackQueen',
+           '♚': 'blackKing' }
 
 
 
@@ -40,12 +40,14 @@ def saveGlyph(glyph, typeface, size, color, fn):
 
 	'''
 
-	print('\n'.join(sorted(pygame.font.get_fonts())))
+	# print('\n'.join(sorted(pygame.font.get_fonts())))
+	# print(font)
 	assert typeface in pygame.font.get_fonts()
 
 	font = pygame.font.SysFont(typeface, size)
-	print(font)
-	pygame.image.save(font.render(glyph, True, color, None), fn)
+	surface = font.render(glyph, True, color, None)
+	print('Saving glyph of width {0} and {1}'.format(surface.get_size()[0]//12, surface.get_size()[1]))
+	pygame.image.save(surface, fn)
 
 
 

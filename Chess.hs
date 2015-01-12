@@ -28,10 +28,10 @@ import qualified Data.Set as Set
 
 import Control.Monad (when)
 
-import Graphics.Gloss hiding (Vector)
+import Graphics.Gloss -- hiding (Vector)
 import Graphics.Gloss.Data.Picture (line)
 import Graphics.Gloss (circleSolid, rectangleSolid)
-import Graphics.Gloss.Interface.IO.Game hiding (Vector, color, Color) -- TODO: Use pure (?)
+import Graphics.Gloss.Interface.IO.Game -- hiding (Vector, color, Color) -- TODO: Use pure (?)
 
 import Text.Printf
 
@@ -96,6 +96,7 @@ grid rw cl f = [f r c | r <- [0..rw-1], c <- [0..cl-1]]
 
 
 -- Gloss ------------------------------------------------------------------------------------------
+--
 mainGloss :: IO ()
 mainGloss = playIO
 	display -- Window mode
@@ -128,7 +129,9 @@ mainGloss = playIO
 
 -- Logic and Graphics tests
 mainDebug :: IO ()
-mainDebug = return ()
+mainDebug = do
+	image <- loadBMP "pieces.bmp"
+	display (InWindow "Pieces" (2*6*72+2*10, 94+2*10) (0, 0)) white image
 
 
 
@@ -139,6 +142,7 @@ mainDebug = return ()
 main :: IO ()
 main = do
 	print . length $ [ (x,y) | x <- [1..8], y <- [1..8]]
+	mainDebug
 	mainGloss
 	--putStrLn "Hello World"
 	--putStr . visualise $ Square Rook Black

@@ -130,12 +130,12 @@ validMove board from x' y' = inside x' y' && notAlly from (at board x' y')
 
 -- Steps -------------------------------------------------------------------------------------------
 -- These function (values?) yield lists of relative steps for each type of piece
-rook =
-bishop =
-knight =
-queen =
-king =
-pawn =
+--rook = 
+--bishop =
+--knight =
+--queen =
+--king =
+--pawn =
 
 -- Initial row of a pawn
 startrow :: Square -> Int
@@ -152,7 +152,6 @@ startrow pawn = case colour pawn of
 -- The paths are then flattened into a single list of absolute (col, row) coordinates
 createPaths :: Board -> [(Int, Int)] -> [(Int, Int)]
 createPaths deltas = concat $ map (\ delta -> takeValid delta $ path [1..7] delta) deltas
-
 
 --
 pieceMoves :: Square -> [(Int, Int)]
@@ -172,15 +171,9 @@ moves board row col = let square = at board row col
                           validStep (dx, dy) (x, y) = validMove board square x y && (notInside (x-dx) (y-dy) || notEnemy square (at board (x-dx) (y-dy)))
                           takeValid delta steps = takeWhile (validStep delta) $ steps
                           path range (dx, dy) = map (\ a -> (dx*a, dy*a)) range -- TODO: Extract path logic
-                          
                           filterInvalid = filter (uncurry $ validMove board square)
                       in maybe [] pieceMoves $ square
-	      validStep (dx, dy) (x, y) = validMove board square x y && (notInside (x-dx) (y-dy) || notEnemy square (at board (x-dx) (y-dy)))
-	      takeValid delta steps = takeWhile (validStep delta) $ steps
-	      path range (dx, dy) = map (\ a -> (dx*a, dy*a)) range -- TODO: Extract path logic
-	      createPaths deltas = concat $ map (\ delta -> takeValid delta $ path [1..7] delta) deltas
-	      filterInvalid = filter (uncurry $ validMove board square)
-	      --validPath range (dx, dy) = 
+
 
 -- Lenses -----------------------------------------------------------------------------------------
 -- 

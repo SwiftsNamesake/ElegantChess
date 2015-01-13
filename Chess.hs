@@ -9,6 +9,9 @@
 -- TODO | - Lenses (cf. world argument to playIO)
 --        - Assets, settings profiles (JSON)
 --        - Clock
+--        - Organize in modules and sub-modules (eg. Chess.Graphics and Chess.Core) (?)
+--        - Cabal and Haddock (?)
+--        - UI (Label, Entry, Button, etc.)
 
 -- SPEC | -
 --        -
@@ -71,11 +74,13 @@ mainGLUT = do
 	mainLoop
 -}
 
+
 -- chequer
 squareColor :: Int -> Int -> Color
 squareColor x y
 	| ((==) `on` even) x y = black
 	| otherwise = white
+
 
 --
 -- TODO: Extract coordinate system logic
@@ -83,11 +88,13 @@ squareSolid :: Float -> Float -> Float -> Picture
 squareSolid side x y = translate (x*side-wd/2+side/2) (y*side-ht/2+side/2) $ rectangleSolid side side
 	where (wd, ht) = (80*8, 80*8)
 
+
 --
 -- TODO: Make polymorphic (?)
 chequer :: Float -> (Int -> Int -> Color) -> Int -> Int -> Picture
 chequer side paint rw cl = color (paint rw cl) $ squareSolid side x y
 	where (x, y) = (fromIntegral rw, fromIntegral cl)
+
 
 --
 -- TODO: Create 2D list or vector instead (?)
@@ -123,7 +130,7 @@ mainGloss = playIO
 		(width, height)	= (floor size*8, floor size*8)              -- Window dimensions (Integral)
 		(wd, ht)		= (fromIntegral width, fromIntegral height)	-- Window dimensions (Floating)
 		size 			= 80 		 -- Size of a single square
-		sz = floor size              -- 
+		sz              = floor size -- Integer size
 		(posX,  posY) 	= (125, 125) -- Window position
 
 
@@ -131,8 +138,10 @@ mainGloss = playIO
 mainDebug :: IO ()
 mainDebug = do
 	image <- loadBMP "pieces.bmp"
-	display (InWindow "Pieces" (2*6*72+2*10, 94+2*10) (0, 0)) white image
-
+	display window white image
+	where size = (2*6*72+2*10, 94+2*10) -- Each glyph is (currently) 72x94 pixels. There are 12 glyphs in total (two per colour). Includes padding.
+	      pos  = (0, 0)                 -- Position of the window's top left corner in relation to the monitor
+	      window = InWindow "Pieces" size pos --
 
 
 ---------------------------------------------------------------------------------------------------
@@ -141,7 +150,6 @@ mainDebug = do
 -- TODO: Decide on a framework for the frontend (GLUT, OpenGL, Cairo, SDL)
 main :: IO ()
 main = do
-	print . length $ [ (x,y) | x <- [1..8], y <- [1..8]]
 	mainDebug
 	mainGloss
 	--putStrLn "Hello World"

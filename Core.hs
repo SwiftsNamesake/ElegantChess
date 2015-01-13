@@ -44,8 +44,10 @@ data Colour = Black | White deriving (Eq, Show, Enum) -- TODO: Rename (?)
 data Square = Square Piece Colour deriving (Eq, Show) -- TODO: Rename (?)
 type Board  = [[Maybe Square]] --Vector (Vector Square)
 
-newtype Row = Row Int
+newtype Row = Row Int -- deriving (Num)
 newtype Col = Col Int
+type Point = (Row, Col)
+
 
 
 ----------------------------------------------------------------------------------------------------
@@ -74,6 +76,7 @@ black = "♖♘♗♕♔♙" -- All black pieces
 replace :: (Int, a) -> [a] -> [a]
 replace (i, x) xs = let (before, after) = splitAt i xs in before ++ x : tail after
 
+
 --
 -- TODO: Uncurrying multiple-argument functions
 update :: [(Int, a)] -> [a] -> [a]
@@ -88,14 +91,16 @@ update pairs xs = foldr replace xs pairs
 --
 -- TODO: Simplify (perhaps with lenses)
 -- TODO: More powerful query and update functions
-move :: Board -> (Int, Int) -> (Int, Int) -> Board
-move board (row, col) (row', col') = [[Nothing]]
-	where source = at board row col
-	      target = at board row' col'
+--
+move :: Board -> Point -> Point -> Board
+move board from to = [[Nothing]]
+	where source = at board from
+	      target = at board to
+
 
 --
-at :: Board -> Int -> Int -> Maybe Square
-at board row col = board !! row !! col
+at :: Board -> Point -> Maybe Square
+at board (Row row, Col col) = board !! row !! col
 
 
 -- Predicates for Squares, Pieces and Boards -------------------------------------------------------
@@ -104,18 +109,23 @@ at board row col = board !! row !! col
 -- (eg. curried or uncurried coordinates, taking a Maybe Square or a column and row)
 
 -- Row and column is within range
-inside :: Int -> Int -> Bool
-inside col row = (row >= 0) && (row < 8) && (col >= 0) && (col < 8)
+inside :: Point -> Bool
+inside (Row row, Col col) = (row >= 0) && (row < 8) && (col >= 0) && (col < 8)
 
-notInside :: Int -> Int -> Bool
-notInside col row = not $ inside col row
+
+-- Inverse of inside (cf. aboce)
+notInside :: Point -> Bool
+notInside point = not $ inside point
+
 
 -- Determines if a square is occuped (ie. not empty)
 occupied :: Maybe Square -> Bool
 occupied = isJust
 
+
 -- hasEnemy
 -- Compares the colours of the pieces on two (possibly empty) Squares (True when unequal).
+-- TODO: Flesh out comment, more descriptive argument names
 hasEnemy :: Maybe Square -> Maybe Square -> Bool
 hasEnemy a b = maybe False id $ liftM2 ((/=) `on` colour) a b
 
@@ -136,24 +146,52 @@ notAlly :: Maybe Square -> Maybe Square -> Bool
 notAlly a b = not $ hasAlly a b
 
 
+-- Validates a move from one Square to a specific row and column.
+-- 
+-- Accepts a Board, Square and Point. A move is valid iff the Square at the given Point on the Board is either
+-- empty or occupied by an enemy piece.
 --
-validMove :: Board -> Maybe Square -> Int -> Int -> Bool
-validMove board from x' y' = inside x' y' && notAlly from (at board x' y')
+-- It is invalid if the Point is outside the Board.
+--
+-- TODO: Accept Points or Squares (?)
+-- Won't work because of the bounds checking.
+validMove :: Board -> Maybe Square -> Point -> Bool
+validMove board from to = inside to && notAlly from (at board to)
 
 
 -- Validates a single step in a path of multiple steps.
 --
--- This function takes a Board, a coordinate (row, col) indicating the current position, and a direction to step in (delta row, delta row)
+-- This function takes a Board, a coordinate (row, col) indicating the next position, and the direction we're stepping in (delta row, delta row)
 -- A step from one square to another (as indicates by the position and direction) is valid if the latter is not occupied by an allied piece,
 -- and if the square we're about to leave wasn't previously occupied by an enemy piece (since one cannot continue moving after a capture).
 -- Furthermore, one clearly cannot move outside the board, so the function also performs bounds checking.
-validStep :: Board -> (Int, Int) -> (Int, Int) -> Bool
-validStep board (x, y) (dx, dy) = validMove board square x y && (notInside (x-dx) (y-dy) || notEnemy square (at board (x-dx) (y-dy)))
+--
+-- TODO: Slight refactoring (clarify, remove parentheses)
+validStep :: Board -> Point -> Point -> Bool
+validStep board (Row dRow, Col dCol) (Row row, Col col) = validMove board from (Row row, Col col) && (notInside (Row $ row-dRow, Col $ col-dCol) || notEnemy from to)
+	where from = at board (Row $ row-dRow, Col $ col-dCol)
+	      to   = at board (Row row, Col col) -- Should not be evaluated if bounds checking fails
 
 
-takeValid delta steps = takeWhile (validStep delta) $ steps
-path range (dx, dy) = map (\ a -> (dx*a, dy*a)) range -- TODO: Extract path logic
-filterInvalid = filter (uncurry $ validMove board square)
+-- Consumes a path (list of absolute row and column pairs) until the first invalid move
+-- TODO: Flesh out comment
+takeValid :: Board -> Point -> [Point] -> [Point]
+takeValid board delta steps = takeWhile (validStep board delta) $ steps
+
+
+-- Creates a path (list of relative steps) from the given range, origin and direction
+-- TODO: Accept an int (length) instead of a list (range)
+path :: [Int] -> Point -> Point -> [Point]
+path range (Row dRow, Col dCol) (Row row, Col col) = map step range -- TODO: Extract path logic
+	where step n = (Row $ dRow*n+row, Col $ dCol*n+col) -- Position at nth step (TODO: Rename)
+
+-- 
+-- TODO: Include argument (?)
+-- TODO: Verify
+-- TODO: Add comment
+filterInvalid :: Board -> Maybe Square -> [Point] -> [Point]
+filterInvalid board square moves = filter (validMove board square) moves
+
 
 -- Steps -------------------------------------------------------------------------------------------
 -- These function (values?) yield lists of relative steps for each type of piece
@@ -175,36 +213,41 @@ startrow pawn = case colour pawn of
 
 -- TODO: transforming functions taking Square to function taking col row and board
 
--- Creates paths based on a list of (dx, dy) pairs
--- These pairs indicate the direction of each path,
+-- Creates paths based on a list of (row, column) pairs and an initial position
+-- These pairs indicate the direction of each path
 -- Each path is subsequently truncated at the first invalid step
 -- The paths are then flattened into a single list of absolute (row, col) coordinates
-createPaths :: Board -> [(Int, Int)] -> [(Int, Int)]
-createPaths board deltas = concat $ map (\ delta -> takeValid delta $ path [1..7] delta) deltas
+-- TODO: Verify comment, flesh out if necessary
+createPaths :: Board -> Point -> [Point] -> [Point]
+createPaths board origin deltas = concat $ map createPath deltas
+	where createPath delta = takeValid board delta $ path [1..7] delta origin
 
 
 --
-pieceMoves :: Square -> [(Int, Int)]
-pieceMoves piece = case piece of
-	Square Rook _   -> createPaths [(-1, 0), (1, 0), (0, -1), (0, 1)] -- TODO: Extract path logic
-	Square Bishop _ -> createPaths [(-1, -1), (1, 1), (1, -1), (-1, 1)]
-	Square Knight _ -> filterInvalid [(row+dx, col+dy) | dx <- [-1, 1, -2, 2], dy <- [-1, 1, -2, 2], dx /= dy ]
-	Square Queen _  -> concat . map createPaths $ [[(-1, 0), (1, 0), (0, -1), (0, 1)], [(-1, -1), (1, 1), (1, -1), (-1, 1)]]
-	Square King _   -> filterInvalid [(row+dx, col+dy) | dx <- [-1..1], dy <- [-1..1], dx /= 0 || dy /= 0] -- TODO: Add two steps logic
-	Square Pawn _   -> filterInvalid [(row+dx, col+1) | dx <- [-1, 0, 1], dx == 0 || hasEnemy square (at board (row+dx) (col+1))]
+-- TODO: Add comments
+-- TODO: Sort out naming conventions (will be easier once Square has become Maybe Unit or Maybe Piece)
+pieceMoves :: Board -> Point -> Square -> [Point]
+pieceMoves board from@(Row row, Col col) square = case square of
+	Square Rook _   -> (createPaths board origin) $ makePoints [(-1, 0), (1, 0), (0, -1), (0, 1)] -- TODO: Extract path logic
+	Square Bishop _ -> (createPaths board origin) $ makePoints [(-1, -1), (1, 1), (1, -1), (-1, 1)]
+	Square Knight _ -> filterInvalid board square' [makePoint (row+dx) (col+dy) | dx <- [-1, 1, -2, 2], dy <- [-1, 1, -2, 2], dx /= dy ]
+	Square Queen _  -> concat . map (createPaths board origin) $ map makePoints [[(-1, 0), (1, 0), (0, -1), (0, 1)], [(-1, -1), (1, 1), (1, -1), (-1, 1)]]
+	Square King _   -> filterInvalid board square' [makePoint (row+dx) (col+dy) | dx <- [-1..1], dy <- [-1..1], dx /= 0 || dy /= 0] -- TODO: Add two steps logic
+	Square Pawn _   -> filterInvalid board square' [makePoint (row+dx) (col+1) | dx <- [-1, 0, 1], dx == 0 || hasEnemy square' (at' (Row $ row+dx, Col $ col+1))]
+	where at'     = at board                    -- TODO: Rename
+	      square'  = at' $ makePoint row col    -- Maybe Square, technically (cf. related TODOs)
+	      origin  = (Row row, Col col)          --
+	      makePoint rw cl = (Row rw, Col cl)    --
+	      makePoints = map $ uncurry makePoint  --
 
 
 --
 -- TODO: Extract auxiliary definitions
 -- TODO: Use Complex Int Int (?)
-moves :: Board -> Int -> Int -> [(Int, Int)]
+moves :: Board -> Int -> Int -> [Point]
 -- TODO: Replace these definitions with curried versions of the global helper functions
-moves board row col = let square = at board row col
-                          validStep (dx, dy) (x, y) = validMove board square x y && (notInside (x-dx) (y-dy) || notEnemy square (at board (x-dx) (y-dy)))
-                          takeValid delta steps = takeWhile (validStep delta) $ steps
-                          path range (dx, dy) = map (\ a -> (dx*a, dy*a)) range -- TODO: Extract path logic
-                          filterInvalid = filter (uncurry $ validMove board square)
-                      in maybe [] pieceMoves $ square
+moves board row col = let square = at board (Row row, Col col)
+                      in maybe [] (pieceMoves board (Row row, Col col)) $ square
 
 
 -- Lenses -----------------------------------------------------------------------------------------
@@ -222,6 +265,7 @@ piece (Square piece _) = piece
 -- Transformations ----------------------------------------------------------------------------------
 --
 -- TODO: Simplify
+-- TODO: Rename piece argument (clashes with function) (?)
 showPiece :: Square -> String
 showPiece (Square piece colour) = case piece of
 	Pawn   -> ["♟♙" !! index]

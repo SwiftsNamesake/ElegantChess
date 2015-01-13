@@ -137,7 +137,7 @@ mainGloss = playIO
 -- Logic and Graphics tests
 mainDebug :: IO ()
 mainDebug = do
-	image <- loadBMP "pieces.bmp"
+	image <- loadBMP "assets/pieces.bmp"
 	display window white image
 	where size = (2*6*72+2*10, 94+2*10) -- Each glyph is (currently) 72x94 pixels. There are 12 glyphs in total (two per colour). Includes padding.
 	      pos  = (0, 0)                 -- Position of the window's top left corner in relation to the monitor

@@ -10,6 +10,7 @@
 --        - Safe versions of each unsafe function (Maybe)
 --        - Use types to catch col/row errors (cf. newtype) (?)
 --        - Terminology (moves, pieces, source square and target square, capturing or attacking, etc.)
+--        - Castling
 
 -- SPEC | - http://en.wikipedia.org/wiki/Rules_of_chess
 --        -
@@ -26,9 +27,11 @@ module Core where
 --https://hackage.haskell.org/package/grid-2.1.1/docs/Math-Geometry-Grid.html
 --import Data.Vector ((//), (!), fromList, Vector)
 import Data.Function (on)
-import Control.Monad (liftM, liftM2)
+import Control.Monad (liftM, liftM2, when)
 
-import Data.Maybe (isJust)
+import Data.Maybe (isJust, catMaybes)
+
+import qualified IOUtil
 
 --import Control.Monad (when)
 --import Text.Printf
@@ -39,14 +42,18 @@ import Data.Maybe (isJust)
 -- Types
 ----------------------------------------------------------------------------------------------------
 -- TODO: Consider names for types (Square = Maybe Piece would make more sense)
-data Piece  = Pawn | Rook | Bishop | Knight | Queen | King deriving (Eq, Show, Enum)
-data Colour = Black | White deriving (Eq, Show, Enum) -- TODO: Rename (?)
-data Square = Square Piece Colour deriving (Eq, Show) -- TODO: Rename (?)
-type Board  = [[Maybe Square]] --Vector (Vector Square)
+data Piece    = Pawn | Rook | Bishop | Knight | Queen | King deriving (Eq, Show, Enum)
+data Colour   = Black | White deriving (Eq, Show, Enum) -- TODO: Rename (?)
+data Unit     = Unit Piece Colour deriving (Eq, Show) -- TODO: Rename (eg. chessman) (?)
 
-newtype Row = Row Int -- deriving (Num)
-newtype Col = Col Int
+type Square   = Maybe Unit -- TODO: Rename (?)
+type Board    = [[Square]] --Vector (Vector Square)
+
+newtype Row = Row Int deriving (Eq, Show) -- deriving (Num)
+newtype Col = Col Int deriving (Eq, Show)
 type Point = (Row, Col)
+
+-- TODO: Move type with additional information (successful, capture, moved piece, captured piece)
 
 
 
@@ -99,7 +106,7 @@ move board from to = [[Nothing]]
 
 
 --
-at :: Board -> Point -> Maybe Square
+at :: Board -> Point -> Square
 at board (Row row, Col col) = board !! row !! col
 
 
@@ -119,30 +126,30 @@ notInside point = not $ inside point
 
 
 -- Determines if a square is occuped (ie. not empty)
-occupied :: Maybe Square -> Bool
+occupied :: Square -> Bool
 occupied = isJust
 
 
 -- hasEnemy
 -- Compares the colours of the pieces on two (possibly empty) Squares (True when unequal).
 -- TODO: Flesh out comment, more descriptive argument names
-hasEnemy :: Maybe Square -> Maybe Square -> Bool
+hasEnemy :: Square -> Square -> Bool
 hasEnemy a b = maybe False id $ liftM2 ((/=) `on` colour) a b
 
 
 -- Inverse of hasEnemy (cf. above)
-notEnemy :: Maybe Square -> Maybe Square -> Bool
+notEnemy :: Square -> Square -> Bool
 notEnemy a b = not $ hasEnemy a b
 
 
 -- hasAlly
 -- Compares the colours of the pieces on two (possibly empty) Squares (True when equal).
-hasAlly :: Maybe Square -> Maybe Square -> Bool
+hasAlly :: Square -> Square -> Bool
 hasAlly a b = maybe False id $ liftM2 ((==) `on` colour) a b
 
 
 -- Inverse of hasAlly (cf. above)
-notAlly :: Maybe Square -> Maybe Square -> Bool
+notAlly :: Square -> Square -> Bool
 notAlly a b = not $ hasAlly a b
 
 
@@ -155,7 +162,7 @@ notAlly a b = not $ hasAlly a b
 --
 -- TODO: Accept Points or Squares (?)
 -- Won't work because of the bounds checking.
-validMove :: Board -> Maybe Square -> Point -> Bool
+validMove :: Board -> Square -> Point -> Bool
 validMove board from to = inside to && notAlly from (at board to)
 
 
@@ -183,13 +190,13 @@ takeValid board delta steps = takeWhile (validStep board delta) $ steps
 -- TODO: Accept an int (length) instead of a list (range)
 path :: [Int] -> Point -> Point -> [Point]
 path range (Row dRow, Col dCol) (Row row, Col col) = map step range -- TODO: Extract path logic
-	where step n = (Row $ dRow*n+row, Col $ dCol*n+col) -- Position at nth step (TODO: Rename)
+	where step n = (Row $ dRow*n+row, Col $ dCol*n+col)             -- Position at nth step (TODO: Rename)
 
 -- 
 -- TODO: Include argument (?)
 -- TODO: Verify
 -- TODO: Add comment
-filterInvalid :: Board -> Maybe Square -> [Point] -> [Point]
+filterInvalid :: Board -> Square -> [Point] -> [Point]
 filterInvalid board square moves = filter (validMove board square) moves
 
 
@@ -205,7 +212,7 @@ filterInvalid board square moves = filter (validMove board square) moves
 
 -- Initial row of a pawn
 -- TODO: Generalize to startrow and direction
-startrow :: Square -> Int
+startrow :: Unit -> Int
 startrow pawn = case colour pawn of
 	White -> 1
 	Black -> 6
@@ -226,24 +233,33 @@ createPaths board origin deltas = concat $ map createPath deltas
 --
 -- TODO: Add comments
 -- TODO: Sort out naming conventions (will be easier once Square has become Maybe Unit or Maybe Piece)
-pieceMoves :: Board -> Point -> Square -> [Point]
-pieceMoves board from@(Row row, Col col) square = case square of
-	Square Rook _   -> (createPaths board origin) $ makePoints [(-1, 0), (1, 0), (0, -1), (0, 1)] -- TODO: Extract path logic
-	Square Bishop _ -> (createPaths board origin) $ makePoints [(-1, -1), (1, 1), (1, -1), (-1, 1)]
-	Square Knight _ -> filterInvalid board square' [makePoint (row+dx) (col+dy) | dx <- [-1, 1, -2, 2], dy <- [-1, 1, -2, 2], dx /= dy ]
-	Square Queen _  -> concat . map (createPaths board origin) $ map makePoints [[(-1, 0), (1, 0), (0, -1), (0, 1)], [(-1, -1), (1, 1), (1, -1), (-1, 1)]]
-	Square King _   -> filterInvalid board square' [makePoint (row+dx) (col+dy) | dx <- [-1..1], dy <- [-1..1], dx /= 0 || dy /= 0] -- TODO: Add two steps logic
-	Square Pawn _   -> filterInvalid board square' [makePoint (row+dx) (col+1) | dx <- [-1, 0, 1], dx == 0 || hasEnemy square' (at' (Row $ row+dx, Col $ col+1))]
-	where at'     = at board                    -- TODO: Rename
-	      square'  = at' $ makePoint row col    -- Maybe Square, technically (cf. related TODOs)
+-- TODO: Simplify
+-- TODO: Verify
+pieceMoves :: Board -> Point -> Unit -> [Point]
+pieceMoves board from@(Row row, Col col) unit = case unit of
+	Unit Rook _   -> fromDeltas [(-1, 0), (1, 0), (0, -1), (0, 1)] -- TODO: Extract path logic
+	Unit Bishop _ -> fromDeltas [(-1, -1), (1, 1), (1, -1), (-1, 1)]
+	Unit Knight _ -> fromAbsolute [(row+dy, col+dx) | dx <- [-1, 1, -2, 2], dy <- [-1, 1, -2, 2], dx /= dy ]
+	Unit Queen _  -> fromDeltas . concat $ [[(-1, 0), (1, 0), (0, -1), (0, 1)], [(-1, -1), (1, 1), (1, -1), (-1, 1)]] -- TODO: Merge Rook and Knight
+	Unit King _   -> fromAbsolute [(row+dy, col+dx) | dx <- [-1..1], dy <- [-1..1], dx /= 0 || dy /= 0] -- TODO: Add two steps logic
+	Unit Pawn _   -> fromAbsolute [(row+pawnDy, col+dx) | dx <- [-1, 0, 1], (dx == 0) || hasEnemy square (at' (Row $ row+pawnDy, Col $ col+dx))]
+	where at'        = at board                              -- TODO: Rename
+	      fromDeltas = createPaths board origin . makePoints -- 
+	      fromAbsolute = filterInvalid board square . makePoints
+	      square  = at' $ makePoint row col     -- Maybe Square, technically (cf. related TODOs)
 	      origin  = (Row row, Col col)          --
 	      makePoint rw cl = (Row rw, Col cl)    --
 	      makePoints = map $ uncurry makePoint  --
+	      pawnRow = startrow unit -- 
+	      pawnDy | colour unit == Black =  1
+	             | otherwise            = -1
 
 
 --
 -- TODO: Extract auxiliary definitions
 -- TODO: Use Complex Int Int (?)
+-- TODO: Rename, verb (?)
+-- TODO: Change signature (?)
 moves :: Board -> Int -> Int -> [Point]
 -- TODO: Replace these definitions with curried versions of the global helper functions
 moves board row col = let square = at board (Row row, Col col)
@@ -253,21 +269,21 @@ moves board row col = let square = at board (Row row, Col col)
 -- Lenses -----------------------------------------------------------------------------------------
 -- 
 -- TODO: Spelling (?)
-colour :: Square -> Colour
-colour (Square _ col) = col
+colour :: Unit -> Colour
+colour (Unit _ col) = col
 
 
 -- 
-piece :: Square -> Piece
-piece (Square piece _) = piece
+piece :: Unit -> Piece
+piece (Unit piece _) = piece
 
 
 -- Transformations ----------------------------------------------------------------------------------
 --
 -- TODO: Simplify
 -- TODO: Rename piece argument (clashes with function) (?)
-showPiece :: Square -> String
-showPiece (Square piece colour) = case piece of
+showUnit :: Unit -> String
+showUnit (Unit unit colour) = case unit of
 	Pawn   -> ["♟♙" !! index]
 	Rook   -> ["♜♖" !! index]
 	Bishop -> ["♝♗" !! index]
@@ -279,14 +295,18 @@ showPiece (Square piece colour) = case piece of
 	      index = indexOf colour
 
 
+-- showSquare
+
+
+--
 --
 -- TODO: Simplify
 -- TODO: Maybe Square (?)
 -- TODO: Char or string
 -- TODO: Only allow spaces for empty squares (?)
 -- TODO: Define with guards for the constructor arguments and monadic chaining (>>=)
-readPiece :: Char -> Maybe Square
-readPiece c = liftM2 (,) piece col >>= (return . uncurry Square)
+readSquare :: Char -> Square
+readSquare c = liftM2 (,) piece col >>= (return . uncurry Unit)
   where piece
           | c `elem` "♟♙" = Just Pawn
           | c `elem` "♜♖" = Just Rook
@@ -300,8 +320,11 @@ readPiece c = liftM2 (,) piece col >>= (return . uncurry Square)
           | c `elem` black = Just Black
           | otherwise      = Nothing
 
+
+--
+-- TODO: Bounds checking (?)
 readBoard :: String -> Board
-readBoard str = map (map readPiece) . lines $ str
+readBoard str = map (map readSquare) . lines $ str
 
 
 
@@ -328,6 +351,26 @@ mainDebug = do
 runLogicTests :: IO ()
 runLogicTests = do
 	print "Everything seems to be in order."
+	mapM_ (uncurry showMovesFor) [(4,4), (0,1), (6,6), (1, 2)]
+	putStrLn "===== These tests should all evaluate to True ====================================="
+	print . any ((==White) . colour) . catMaybes $ concat board
+	print . any ((==Black) . colour) . catMaybes $ concat board
+	print . (==16) . length . filter ((==White) . colour) . catMaybes $ concat board
+	print . (==16) . length . filter ((==Black) . colour) . catMaybes $ concat board
+	putStrLn "===== END OF TESTS ================================================================"
+	--putStrLn "λ κ γ π" -- Doesn't work
+	IOUtil.putStr . (!!1) . lines $ initial
+	IOUtil.putStr "λ κ γ π"
+	where literal = map (\(r, c) -> (Row r, Col c)) [(0, 1), (0, 2)]
+	      board = readBoard initial
+	      showMoves row col = putStrLn $ unlines [[marker row col rw cl | cl <- [0..7]] | rw <- [0..7] ]
+	      showHeader square = putStrLn $ "Moves for " ++ show (colour square) ++ " " ++ show (piece square) ++ "."
+	      pass = return () -- Alias for doing nothing
+	      showMovesFor row col = maybe pass (\ sqr -> showHeader sqr >> showMoves row col) $ at board (Row row, Col col) --(Square p c) <- at board row col
+	      marker orow ocol row col | (Row row, Col col) `elem` moves board orow ocol = '█' -- Possible move
+	                               | orow == row && ocol == col                      = 'O' -- Starting position
+	                               | otherwise                                       = 'X' -- Empty square
+	                                                                       
 
 
 ----------------------------------------------------------------------------------------------------
@@ -335,4 +378,4 @@ runLogicTests = do
 ----------------------------------------------------------------------------------------------------
 main :: IO ()
 main = do
-	putStrLn "█"
+	runLogicTests

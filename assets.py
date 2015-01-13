@@ -14,7 +14,7 @@
 
 
 import pygame
-
+import subprocess
 
 
 glyphs = { '♙': 'whitePawn',
@@ -60,7 +60,7 @@ def main():
 
 	pygame.init()
 
-	saveGlyph('♙♖♘♗♕♔♟♜♞♝♛♚', 'dejavusans', 80, (255, 255, 255), 'pieces.bmp') # Deja Vu Sans works!
+	saveGlyph('♙♖♘♗♕♔♟♜♞♝♛♚', 'dejavusans', 80, (255, 255, 255), 'assets/pieces.bmp') # Deja Vu Sans works!
 
 	# for glyph, name in glyphs.items():
 		# saveGlyph(glyph, 'Times New Roman', 80, (255, 255, 255), '{0}.bmp'.format(name))

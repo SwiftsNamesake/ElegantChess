@@ -9,8 +9,8 @@
 -- TODO | - Lenses
 --        - Safe versions of each unsafe function (Maybe)
 --        - Use types to catch col/row errors (cf. newtype) (?)
---        - Terminology (moves, pieces, source square and target square, capturing or attacking, etc.)
---        - Castling
+--        - Terminology (moves, pieces, source square and target square, capturing or attacking, 'ranks' for rows etc.)
+--        - Castling, en passant
 
 -- SPEC | - http://en.wikipedia.org/wiki/Rules_of_chess
 --        -
@@ -27,9 +27,11 @@ module Core where
 --https://hackage.haskell.org/package/grid-2.1.1/docs/Math-Geometry-Grid.html
 --import Data.Vector ((//), (!), fromList, Vector)
 import Data.Function (on)
+import Data.Maybe (isJust, catMaybes)
+
 import Control.Monad (liftM, liftM2, when)
 
-import Data.Maybe (isJust, catMaybes)
+import Text.Printf
 
 import qualified IOUtil
 
@@ -120,7 +122,7 @@ inside :: Point -> Bool
 inside (Row row, Col col) = (row >= 0) && (row < 8) && (col >= 0) && (col < 8)
 
 
--- Inverse of inside (cf. aboce)
+-- Inverse of inside (cf. above)
 notInside :: Point -> Bool
 notInside point = not $ inside point
 
@@ -212,10 +214,10 @@ filterInvalid board square moves = filter (validMove board square) moves
 
 -- Initial row of a pawn
 -- TODO: Generalize to startrow and direction
-startrow :: Unit -> Int
+startrow :: Unit -> Row
 startrow pawn = case colour pawn of
-	White -> 1
-	Black -> 6
+	Black -> Row 1
+	White -> Row 6
 
 
 -- TODO: transforming functions taking Square to function taking col row and board
@@ -242,14 +244,15 @@ pieceMoves board from@(Row row, Col col) unit = case unit of
 	Unit Knight _ -> fromAbsolute [(row+dy, col+dx) | dx <- [-1, 1, -2, 2], dy <- [-1, 1, -2, 2], dx /= dy ]
 	Unit Queen _  -> fromDeltas . concat $ [[(-1, 0), (1, 0), (0, -1), (0, 1)], [(-1, -1), (1, 1), (1, -1), (-1, 1)]] -- TODO: Merge Rook and Knight
 	Unit King _   -> fromAbsolute [(row+dy, col+dx) | dx <- [-1..1], dy <- [-1..1], dx /= 0 || dy /= 0] -- TODO: Add two steps logic
-	Unit Pawn _   -> fromAbsolute [(row+pawnDy, col+dx) | dx <- [-1, 0, 1], (dx == 0) || hasEnemy square (at' (Row $ row+pawnDy, Col $ col+dx))]
+	Unit Pawn _   -> fromAbsolute $ [(row+pawnDy, col+dx) | dx <- [-1, 0, 1], (dx == 0) || hasEnemy square (at' (Row $ row+pawnDy, Col $ col+dx))] ++ twosteps
 	where at'        = at board                              -- TODO: Rename
-	      fromDeltas = createPaths board origin . makePoints -- 
+	      fromDeltas = createPaths board origin . makePoints -- Creates a list of validated steps from the given directions (deltas)
 	      fromAbsolute = filterInvalid board square . makePoints
 	      square  = at' $ makePoint row col     -- Maybe Square, technically (cf. related TODOs)
 	      origin  = (Row row, Col col)          --
 	      makePoint rw cl = (Row rw, Col cl)    --
 	      makePoints = map $ uncurry makePoint  --
+	      twosteps = if Row row == pawnRow then [(row+2*pawnDy, col)] else []
 	      pawnRow = startrow unit -- 
 	      pawnDy | colour unit == Black =  1
 	             | otherwise            = -1
@@ -351,22 +354,24 @@ mainDebug = do
 runLogicTests :: IO ()
 runLogicTests = do
 	print "Everything seems to be in order."
-	mapM_ (uncurry showMovesFor) [(4,4), (0,1), (6,6), (1, 2)]
+	mapM_ (uncurry showMovesFor) [(4,4), (0,1), (6,6), (1, 2), (6, 3)]
 	putStrLn "===== These tests should all evaluate to True ====================================="
-	print . any ((==White) . colour) . catMaybes $ concat board
-	print . any ((==Black) . colour) . catMaybes $ concat board
-	print . (==16) . length . filter ((==White) . colour) . catMaybes $ concat board
-	print . (==16) . length . filter ((==Black) . colour) . catMaybes $ concat board
-	putStrLn "===== END OF TESTS ================================================================"
-	--putStrLn "λ κ γ π" -- Doesn't work
-	IOUtil.putStr . (!!1) . lines $ initial
+	printf "Atleast one white: %s\n" . show . verifyCount $ White
+	printf "Atkeast one black: %s\n" . show . verifyCount $ Black
+	printf "Sixteen white pieces: %s\n" . show . (==16) . length . filter ((==White) . colour) . catMaybes $ concat board
+	printf "Sixteen black pieces: %s\n" . show . (==16) . length . filter ((==Black) . colour) . catMaybes $ concat board
+	putStrLn "===== END OF TESTS ================================================================\n"
+	print $ moves board 6 3
+	IOUtil.putStr . take 8 $ initial
 	IOUtil.putStr "λ κ γ π"
 	where literal = map (\(r, c) -> (Row r, Col c)) [(0, 1), (0, 2)]
+	      verifyCount col = any ((==col) . colour) . catMaybes $ concat board
+	      printCols = putStrLn $ concatMap show [1..8]
 	      board = readBoard initial
 	      showMoves row col = putStrLn $ unlines [[marker row col rw cl | cl <- [0..7]] | rw <- [0..7] ]
-	      showHeader square = putStrLn $ "Moves for " ++ show (colour square) ++ " " ++ show (piece square) ++ "."
+	      showHeader square = printf "Moves for %s %s.\n" (show $ colour square) (show $ piece square)
 	      pass = return () -- Alias for doing nothing
-	      showMovesFor row col = maybe pass (\ sqr -> showHeader sqr >> showMoves row col) $ at board (Row row, Col col) --(Square p c) <- at board row col
+	      showMovesFor row col = maybe pass (\ sqr -> showHeader sqr >> printCols >> showMoves row col) $ at board (Row row, Col col) --(Square p c) <- at board row col
 	      marker orow ocol row col | (Row row, Col col) `elem` moves board orow ocol = '█' -- Possible move
 	                               | orow == row && ocol == col                      = 'O' -- Starting position
 	                               | otherwise                                       = 'X' -- Empty square

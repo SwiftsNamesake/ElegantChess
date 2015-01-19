@@ -358,14 +358,15 @@ runLogicTests = do
 	putStrLn "===== These tests should all evaluate to True ====================================="
 	printf "Atleast one white: %s\n" . show . verifyCount $ White
 	printf "Atkeast one black: %s\n" . show . verifyCount $ Black
-	printf "Sixteen white pieces: %s\n" . show . (==16) . length . filter ((==White) . colour) . catMaybes $ concat board
-	printf "Sixteen black pieces: %s\n" . show . (==16) . length . filter ((==Black) . colour) . catMaybes $ concat board
+	printf "Sixteen white pieces: %s\n" . show . verifySixteen $ White
+	printf "Sixteen black pieces: %s\n" . show . verifySixteen $ Black 
 	putStrLn "===== END OF TESTS ================================================================\n"
 	print $ moves board 6 3
 	IOUtil.putStr . take 8 $ initial
 	IOUtil.putStr "λ κ γ π"
 	where literal = map (\(r, c) -> (Row r, Col c)) [(0, 1), (0, 2)]
 	      verifyCount col = any ((==col) . colour) . catMaybes $ concat board
+	      verifySixteen col = (==16) . length . filter ((==col) . colour) . catMaybes $ concat board
 	      printCols = putStrLn $ concatMap show [1..8]
 	      board = readBoard initial
 	      showMoves row col = putStrLn $ unlines [[marker row col rw cl | cl <- [0..7]] | rw <- [0..7] ]

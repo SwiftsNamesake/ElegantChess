@@ -47,10 +47,10 @@ cabal-version:       >=1.8
 
 executable Chess
   -- .hs or .lhs file containing the Main module.
-  -- main-is:             
+  -- main-is:             Chess.hs
   
   -- Modules included in this executable, other than Main.
-  -- other-modules:       
+  -- other-modules:       IOUtil, Core, GTKTest
   
   -- Other library packages from which modules are imported.
   build-depends:       base ==4.6.*, network ==2.6.*, Win32 ==2.3.*, gtk3 ==0.13.*, containers ==0.5.*, gloss ==1.8.*

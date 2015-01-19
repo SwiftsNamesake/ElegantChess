@@ -2,7 +2,7 @@
  - IOUtil.hs - Unicode console IO
  -
  - http://stackoverflow.com/questions/10779149/unicode-console-i-o-in-haskell-on-windows
- - January 13 2015
+ - Retrieved January 13 2015
  -
  -}
 

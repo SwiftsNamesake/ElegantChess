@@ -12,6 +12,8 @@
 --        - Organize in modules and sub-modules (eg. Chess.Graphics and Chess.Core) (?)
 --        - Cabal and Haddock (?)
 --        - UI (Label, Entry, Button, etc.)
+--        - Configrable Chess sets (different models)
+--        - Custom chess set (perhaps with a theme)
 
 -- SPEC | -
 --        -

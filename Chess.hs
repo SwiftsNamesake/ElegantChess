@@ -14,6 +14,7 @@
 --        - UI (Label, Entry, Button, etc.)
 --        - Configrable Chess sets (different models)
 --        - Custom chess set (perhaps with a theme)
+--        - Rename Main (eg. play, main) (?)
 
 -- SPEC | -
 --        -

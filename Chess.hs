@@ -34,9 +34,8 @@ import qualified Data.Set as Set
 
 import Control.Monad (when)
 
-import Graphics.Gloss -- hiding (Vector)
+import Graphics.Gloss (display, circleSolid, rectangleSolid) -- hiding (Vector)
 import Graphics.Gloss.Data.Picture (line)
-import Graphics.Gloss (circleSolid, rectangleSolid)
 import Graphics.Gloss.Interface.IO.Game -- hiding (Vector, color, Color) -- TODO: Use pure (?)
 
 import Text.Printf
@@ -109,7 +108,7 @@ grid rw cl f = [f r c | r <- [0..rw-1], c <- [0..cl-1]]
 --
 mainGloss :: IO ()
 mainGloss = playIO
-	display -- Window mode
+	window -- Window mode
 	white 	-- Background colour
 	60		-- FPS (simulation steps per second, technically)
 	world 	-- Initial world
@@ -117,11 +116,11 @@ mainGloss = playIO
 	respond -- User interaction
 	advance -- Advances the world to the next simulation step
 	where
-		display			 = InWindow "Chess" (width, height) (posX, posY)
+		window			 = InWindow "Chess" (width, height) (posX, posY)
 		world			 = (Set.fromList [] :: Set.Set Key, (0, 0)) -- (key presses, mouse)
 		render (p, m)	 = do
 			let (mx, my) = m
-			let hovered = chequer size (\r c -> red) (floor (mx + wd/2) `div` sz) (floor (my + ht/2) `div` sz) -- TODO: Extract coordinate conversion and hover logic
+			let hovered = chequer size (\_ _ -> red) (floor (mx + wd/2) `div` sz) (floor (my + ht/2) `div` sz) -- TODO: Extract coordinate conversion and hover logic
 			when (Set.member (Char 'w') p) $ contrast Java Haskell
 			return . pictures $ grid 8 8 (chequer size squareColor) ++ [hovered, text "A♜"]
 		respond e (p, m) = return $ case e of
@@ -129,7 +128,7 @@ mainGloss = playIO
 			EventKey key Up   _ _ -> (Set.delete key p, m)
 			EventMotion mouse     -> (p, mouse)
 			_ 			 -> (p, m)
-		advance t w		= return w
+		advance _ w		= return w
 		(width, height)	= (floor size*8, floor size*8)              -- Window dimensions (Integral)
 		(wd, ht)		= (fromIntegral width, fromIntegral height)	-- Window dimensions (Floating)
 		size 			= 80 		 -- Size of a single square

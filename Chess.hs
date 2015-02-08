@@ -34,8 +34,7 @@ import qualified Data.Set as Set
 
 import Control.Monad (when)
 
-import Graphics.Gloss (display, circleSolid, rectangleSolid) -- hiding (Vector)
-import Graphics.Gloss.Data.Picture (line)
+import Graphics.Gloss (display) -- hiding (Vector)
 import Graphics.Gloss.Interface.IO.Game -- hiding (Vector, color, Color) -- TODO: Use pure (?)
 
 import Text.Printf

@@ -17,6 +17,7 @@
 
 
 import Graphics.UI.Gtk
+import Graphics.UI.Gtk.Builder
 import Control.Monad.Trans (liftIO)
 
 
@@ -64,6 +65,31 @@ emptyWindow = do
 	mainGUI
 
 
+ 
+example :: IO ()
+example = do
+  initGUI
+  window <- windowNew
+  label <- labelNew $ Just "Hello, world from gtk2hs!"
+  set window [ containerBorderWidth := 20,
+               containerChild := label ]
+  window `on` deleteEvent $ liftIO mainQuit >> return False
+  widgetShowAll window
+  mainGUI
+
+
+withGlade :: IO ()
+withGlade = do
+  initGUI
+  gui <- builderNew
+  builderAddFromFile gui "C:/Users/Jonatan/Desktop/sampleOne.glade"
+  window <- builderGetObject gui castToWindow "toplevel"
+  window `on` deleteEvent $ liftIO mainQuit >> return False
+  --void $ on window deleteEvent $ liftIO (mainQuit >> return False)
+  widgetShowAll window
+  mainGUI
+
+
 
 main :: IO ()
-main = oneButton
+main = withGlade

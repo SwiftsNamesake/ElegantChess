@@ -50,7 +50,7 @@ executable ElegantChess
   main-is:             Chess.hs
   
   -- Modules included in this executable, other than Main.
-  other-modules:       Core
+  other-modules:       Core, Wavefront
   
   -- Other library packages from which modules are imported.
   build-depends:       base ==4.6.*, network ==2.6.*, Win32 ==2.3.*, gtk3 ==0.13.*, cairo ==0.13.*, mtl ==2.1.*, containers ==0.5.*, gloss ==1.8.*

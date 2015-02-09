@@ -82,7 +82,7 @@ withGlade :: IO ()
 withGlade = do
   initGUI
   gui <- builderNew
-  builderAddFromFile gui "C:/Users/Jonatan/Desktop/sampleOne.glade"
+  builderAddFromFile gui "assets/interface/sampleOne.glade"
   window <- builderGetObject gui castToWindow "toplevel"
   window `on` deleteEvent $ liftIO mainQuit >> return False
   --void $ on window deleteEvent $ liftIO (mainQuit >> return False)

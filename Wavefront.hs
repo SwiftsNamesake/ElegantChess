@@ -20,14 +20,14 @@
 --        - Caching (?)
 --        - Performance, profiling, optimisations
 --        - PrintfArg instances for the types defined in this module
-
+--        - Decide on a public interface (exports)
 
 -- SPEC | -
 --        -
 
 
 
-module Wavefront (OBJToken, OBJ, parseOBJ) where
+module Wavefront (parseOBJ, parseMTL) where
 
 
 

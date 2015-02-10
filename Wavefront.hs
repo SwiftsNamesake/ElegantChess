@@ -102,14 +102,18 @@ data MTLToken = Ambient  Float Float Float | -- Ka
                 Diffuse  Float Float Float | -- Kd
                 Specular Float Float Float | -- Ks
 
-				MapDiffuse String | -- map_Kd
-		        Material   String   -- newmtl
-		        deriving (Eq, Show)
-		-- ('Ns', 'Ni', 'd', 'Tr', 'illum')
+        MapDiffuse String | -- map_Kd
+        Material   String   -- newmtl
+        deriving (Eq, Show)
+        -- ('Ns', 'Ni', 'd', 'Tr', 'illum')
 
 
 -- |
-type MTL = [Maybe MTLToken]
+type MTLRow = Either String MTLToken
+
+
+-- |
+type MTL = [(Int, MTLRow)]
 
 
 
@@ -154,8 +158,8 @@ parseOBJRow ln
     -- TODO: More generic way of unpacking the right number of values and applying read (?)
     "vt" -> let (x:y:[]) = values in Right $ Texture (read x) (read y) -- Texture
     -- TODO: Clean this up
-    -- TODO: Handle invalid data
-    -- TODO: Capture invalid vertex definitions (currently ignored by catMaybes)
+    -- TODO: Handle invalid data (✓)
+    -- TODO: Capture invalid vertex definitions (cf. sequence) (✓)
     -- ("Invalid vertex: "++) .
     "f"  -> either (Left . const ln) (Right . Face) . sequence . map (vector triplet . splitOn '/') $ values -- Face
     "g"  -> Right . Group  $ values -- Group
@@ -163,33 +167,39 @@ parseOBJRow ln
     "s"  -> Left ln -- Smooth shading
     "mtllib" -> Right . LibMTL $ head values --
     "usemtl" -> Right . UseMTL $ head values --
-    _ -> Left ln
+    _        -> Left ln
     where triplet a b c = (a, b, c) -- TODO: Use tuple sections (?)
 
 
 -- |
 -- process the OBJ tokens
 parseMTL :: String -> MTL
-parseMTL = map parseMTLRow . rows
+parseMTL = zip [1..] . map parseMTLRow . lines
 
 
 -- | 
 -- process the MTL tokens
 -- TODO: cf. parseOBJRow
-parseMTLRow :: String -> Maybe MTLToken
-parseMTLRow ln = let (which:values) = words ln in case which of
-  "Ka" -> withChannels Ambient  values -- Ka
-  "Kd" -> withChannels Diffuse  values -- Kd
-  "Ks" -> withChannels Specular values -- Ks
-  "map_Kd" -> let (name:[]) = values in Just $ MapDiffuse name -- map_Kd
-  "newmtl" -> let (name:[]) = values in Just $ Material   name -- newmtl
-  _        -> Nothing
-  where withChannels token (r:g:b:[]) = Just $ token (read r) (read g) (read b) -- TODO: No alpha channel (optional?) (?) (read a) 
-        withChannels _      _         = Nothing -- TODO: No alpha channel (optional?) (?) (read a)
+parseMTLRow :: String -> MTLRow
+parseMTLRow ln
+  | isComment ln || null ln = Left ln
+  | otherwise               = let (which:values) = words ln in case which of
+    "Ka" -> withChannels Ambient  values -- Ka
+    "Kd" -> withChannels Diffuse  values -- Kd
+    "Ks" -> withChannels Specular values -- Ks
+    "map_Kd" -> withName MapDiffuse values -- map_Kd
+    "newmtl" -> withName Material   values -- newmtl
+    _        -> Left ln
+    where withChannels token (r:g:b:[]) = Right $ token (read r) (read g) (read b) -- TODO: No alpha channel (optional?) (?) (read a) 
+          withChannels _      _         = Left  $ "Pattern match failed" -- TODO: No alpha channel (optional?) (?) (read a)
+
+          withName token (name:[]) = Right $ token name
+          withName _      _        = Left "Patter match failed" 
 
 
 -- Parsing utilities ------------------------------------------------------------------------------
 -- |
+-- TODO: Clean up or use existing function
 splitOn :: Eq a => a -> [a] -> [[a]]
 splitOn c s = filter (/=[c]) . groupBy ((==) `on` (==c)) $ s
 
@@ -270,7 +280,7 @@ main = do
 
     printf "\nParsing MTL file: %s.mtl\n" fn
     materials <- loadMTL $ printf (path ++ "data/%s.mtl") fn
-    printf "Found %d invalid rows in MTL file.\n" . length . filter (==Nothing) $ materials
-    mapM_ print . catMaybes $ materials
+    printf "Found %d invalid rows in MTL file.\n" $ length [ 1 | Left _ <- map snd materials ]
+    mapM_ print ["[" ++ show n ++ "] " ++ show token | (n, Right token) <- materials ]
 
     promptContinue "Press any key to continue..."

@@ -121,7 +121,7 @@ type MTL = [(Int, MTLRow)]
 -- Functions (pure)
 ---------------------------------------------------------------------------------------------------
 -- Parsers ----------------------------------------------------------------------------------------
--- | This function generates a list of OBJTokens (wrapped in Maybe to account for invalid data).
+-- | This function creates an OBJToken or error for each line in the input data
 -- 
 -- TODO: Use appropriate container type (cf. TODO section)
 -- TODO: Extract filter predicate (isComment, isEmpty)
@@ -132,7 +132,7 @@ type MTL = [(Int, MTLRow)]
 parseOBJ :: String -> OBJ
 parseOBJ = zip [1..] . map parseOBJRow . lines -- . rows
 
--- I never new pattern matching in list comprehensions could be used to filter by constructor
+-- I never knew pattern matching in list comprehensions could be used to filter by constructor
 -- let rows = parseOBJ data in ([ v | @v(Vertex {}) <- rows], [ v | @v(Vertex {}) <- rows])
 
 

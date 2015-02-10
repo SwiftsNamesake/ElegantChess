@@ -59,9 +59,14 @@ data OBJToken = Vertex  Float Float Float |
 
 
 -- |
+-- TODO: Use error type instead of String (?)
+type OBJLine = Either String OBJToken
+
+
+-- |
 -- TODO: Rename (?)
 -- TODO: Use Integral for line number (?)
-type OBJ = [Maybe OBJToken]
+type OBJ = [(Int, OBJLine)]
 
 
 -- | Abstract representation of an OBJ model with associated MTL definitions.

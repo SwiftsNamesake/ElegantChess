@@ -251,8 +251,8 @@ promptContinue :: String -> IO ()
 promptContinue prompt = do
   putStr prompt
   hFlush stdout
-  _ <- getChar
-  return ()
+  getChar
+  putChar '\n'
 
 
 
@@ -268,7 +268,7 @@ main = do
   flip mapM_ ["queen", "cube"] $ \ fn -> do
     printf "\nParsing OBJ file: %s.obj\n" fn
     model <- loadOBJ $ printf (path ++ "data/%s.obj") fn
-    printf "Found %d invalid rows in OBJ file.\n" $ length [ 1 | Left _ <- map snd model ] --filter (==Nothing) $ model
+    printf "Found %d invalid rows in OBJ file (n comments, m blanks, o errors).\n" $ length [ 1 | Left _ <- map snd model ] --filter (==Nothing) $ model
 
     promptContinue "Press any key to continue..."
 
@@ -280,7 +280,7 @@ main = do
 
     printf "\nParsing MTL file: %s.mtl\n" fn
     materials <- loadMTL $ printf (path ++ "data/%s.mtl") fn
-    printf "Found %d invalid rows in MTL file.\n" $ length [ 1 | Left _ <- map snd materials ]
+    printf "Found %d invalid rows in MTL file (n comments, m blanks, o errors).\n" $ length [ 1 | Left _ <- map snd materials ]
     mapM_ print ["[" ++ show n ++ "] " ++ show token | (n, Right token) <- materials ]
 
     promptContinue "Press any key to continue..."

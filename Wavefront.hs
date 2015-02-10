@@ -60,6 +60,7 @@ data OBJToken = Vertex  Float Float Float |
 
 -- |
 -- TODO: Rename (?)
+-- TODO: Use Integral for line number (?)
 type OBJ = [Maybe OBJToken]
 
 
@@ -234,6 +235,7 @@ main = do
 	  printf "\nParsing OBJ file: %s.obj\n" fn
 	  model <- loadOBJ $ printf (path ++ "data/%s.obj") fn
 	  printf "Found %d invalid rows in OBJ file.\n" . length . filter (==Nothing) $ model
+    printf
 	  mapM_ print . catMaybes $ model
 	  -- TODO: Add pause
 	  printf "\nParsing MTL file: %s.mtl\n" fn

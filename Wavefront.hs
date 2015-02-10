@@ -11,6 +11,7 @@
 --        - Incremental parsing (?)
 --        - Improve naming scheme
 --        - Separate MTL and OBJ parsers (?)
+--        - Separate parsing, IO and testing
 --        - Additional attributes (lighting, splines, etc.)
 --        - FFI
 --        - Debugging information (line number, missing file, missing values, etc.)
@@ -18,6 +19,8 @@
 --        - Model type
 --        - Caching (?)
 --        - Performance, profiling, optimisations
+--        - PrintfArg instances for the types defined in this module
+
 
 -- SPEC | -
 --        -
@@ -35,7 +38,10 @@ import Data.List (isPrefixOf, groupBy)
 import Data.Char (isSpace)
 import Data.Function (on)
 import Data.Maybe (catMaybes)
+
 import Text.Printf (printf)
+import Control.Concurrent (threadDelay)
+import System.IO (hFlush, stdout)
 
 
 
@@ -60,17 +66,18 @@ data OBJToken = Vertex  Float Float Float |
 
 -- |
 -- TODO: Use error type instead of String (?)
-type OBJLine = Either String OBJToken
+-- This would allow us to distinguish invalid data from eg. comments and blank lines
+type OBJRow = Either String OBJToken
 
 
 -- |
 -- TODO: Rename (?)
 -- TODO: Use Integral for line number (?)
-type OBJ = [(Int, OBJLine)]
+type OBJ = [(Int, OBJRow)]
 
 
 -- | Abstract representation of an OBJ model with associated MTL definitions.
--- Thi
+-- 
 --
 -- TODO: Rename (?)
 -- TODO: Include metadata, comments, rejected data (?)
@@ -119,7 +126,7 @@ type MTL = [Maybe MTLToken]
 -- TODO: Should this function separate the various fields (eg. [(Vertices, Faces, Materials, Groups)] instead of [Maybe OBJToken])
 --
 parseOBJ :: String -> OBJ
-parseOBJ = map parseOBJRow . rows
+parseOBJ = zip [1..] . map parseOBJRow . lines -- . rows
 
 -- I never new pattern matching in list comprehensions could be used to filter by constructor
 -- let rows = parseOBJ data in ([ v | @v(Vertex {}) <- rows], [ v | @v(Vertex {}) <- rows])
@@ -137,24 +144,27 @@ parseOBJ = map parseOBJRow . rows
 -- TODO: Take 1-based indexing into account straight away (?)
 -- TODO: Deal with absent texture and normal indices
 --
-parseOBJRow :: String -> Maybe OBJToken
-parseOBJRow ln = let (which:values) = words ln in case which of
-  "v"  -> vector Vertex  values -- Vertex
-  "vn" -> vector Normal  values -- Normal
-  -- TODO: Clean this up
-  -- TODO: More generic way of unpacking the right number of values and applying read (?)
-  "vt" -> let (x:y:[]) = values in Just $ Texture (read x) (read y) -- Texture
-  -- TODO: Clean this up
-  -- TODO: Handle invalid data
-  -- TODO: Capture invalid vertex definitions (currently ignored by catMaybes)
-  "f"  -> Just . Face   . catMaybes . map (vector triplet . splitOn '/') $ values -- Face
-  "g"  -> Just . Group  $ values -- Group
-  "o"  -> Just . Object $ values -- Object
-  "s"  -> Nothing -- Smooth shading
-  "mtllib" -> Just . LibMTL $ head values --
-  "usemtl" -> Just . UseMTL $ head values --
-  _ -> Nothing
-  where triplet a b c = (a, b, c) -- TODO: Use tuple sections (?)
+parseOBJRow :: String -> OBJRow -- Maybe OBJToken
+parseOBJRow ln
+  | isComment ln || null ln = Left ln
+  | otherwise               = let (which:values) = words ln in case which of
+    "v"  -> vector Vertex values -- Vertex
+    "vn" -> vector Normal values -- Normal
+    -- TODO: Clean this up
+    -- TODO: More generic way of unpacking the right number of values and applying read (?)
+    "vt" -> let (x:y:[]) = values in Right $ Texture (read x) (read y) -- Texture
+    -- TODO: Clean this up
+    -- TODO: Handle invalid data
+    -- TODO: Capture invalid vertex definitions (currently ignored by catMaybes)
+    -- ("Invalid vertex: "++) .
+    "f"  -> either (Left . const ln) (Right . Face) . sequence . map (vector triplet . splitOn '/') $ values -- Face
+    "g"  -> Right . Group  $ values -- Group
+    "o"  -> Right . Object $ values -- Object
+    "s"  -> Left ln -- Smooth shading
+    "mtllib" -> Right . LibMTL $ head values --
+    "usemtl" -> Right . UseMTL $ head values --
+    _ -> Left ln
+    where triplet a b c = (a, b, c) -- TODO: Use tuple sections (?)
 
 
 -- |
@@ -197,9 +207,9 @@ rows = filter (\ ln -> not $ any ($ ln) [null, isComment]) . lines
 
 -- |
 -- TODO: Use readMaybe (?)
-vector :: Read r => (r -> r -> r -> b) -> [String] -> Maybe b
-vector token (x:y:z:[]) = Just $ token (read x) (read y) (read z) -- TODO: Add back the Maybe wrapper (?)
-vector _      _         = Nothing
+vector :: Read r => (r -> r -> r -> b) -> [String] -> Either String b
+vector token (x:y:z:[]) = Right $ token (read x) (read y) (read z) -- TODO: Add back the Maybe wrapper (?)
+vector _      _         = Left  "Pattern match failed"
 
 
 
@@ -226,24 +236,41 @@ loadMTL fn = do
 -- loadModel
 
 
+-- | 
+promptContinue :: String -> IO ()
+promptContinue prompt = do
+  putStr prompt
+  hFlush stdout
+  _ <- getChar
+  return ()
+
+
 
 ---------------------------------------------------------------------------------------------------
 -- Entry point
 ---------------------------------------------------------------------------------------------------
 main :: IO ()
 main = do
-	putStrLn "This is where the checks should be."
+  putStrLn "This is where the checks should be."
 
-	let path = "C:/Users/Jonatan/Desktop/Python/experiments/WaveFront/"
-	
-	flip mapM_ ["queen", "cube"] $ \ fn -> do
-	  printf "\nParsing OBJ file: %s.obj\n" fn
-	  model <- loadOBJ $ printf (path ++ "data/%s.obj") fn
-	  printf "Found %d invalid rows in OBJ file.\n" . length . filter (==Nothing) $ model
-    printf
-	  mapM_ print . catMaybes $ model
-	  -- TODO: Add pause
-	  printf "\nParsing MTL file: %s.mtl\n" fn
-	  materials <- loadMTL $ printf (path ++ "data/%s.mtl") fn
-	  printf "Found %d invalid rows in MTL file.\n" . length . filter (==Nothing) $ materials
-	  mapM_ print . catMaybes $ materials
+  let path = "C:/Users/Jonatan/Desktop/Python/experiments/WaveFront/"
+  
+  flip mapM_ ["queen", "cube"] $ \ fn -> do
+    printf "\nParsing OBJ file: %s.obj\n" fn
+    model <- loadOBJ $ printf (path ++ "data/%s.obj") fn
+    printf "Found %d invalid rows in OBJ file.\n" $ length [ 1 | Left _ <- map snd model ] --filter (==Nothing) $ model
+
+    promptContinue "Press any key to continue..."
+
+    mapM_ print ["[" ++ show n ++ "] " ++ show token | (n, Right token) <- model ]
+    -- mapM_ print ["[" ++ show n ++ "] " ++ line | (n, Left line) <- model ]
+    -- TODO: Print culprit lines (✓)
+
+    promptContinue "Press any key to continue..."
+
+    printf "\nParsing MTL file: %s.mtl\n" fn
+    materials <- loadMTL $ printf (path ++ "data/%s.mtl") fn
+    printf "Found %d invalid rows in MTL file.\n" . length . filter (==Nothing) $ materials
+    mapM_ print . catMaybes $ materials
+
+    promptContinue "Press any key to continue..."

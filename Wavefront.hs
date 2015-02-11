@@ -43,8 +43,6 @@ import Text.Printf (printf)
 import Control.Concurrent (threadDelay)
 import System.IO (hFlush, stdout)
 
-import System.Random
-
 
 
 ---------------------------------------------------------------------------------------------------

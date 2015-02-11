@@ -27,7 +27,7 @@
 
 
 
-module Wavefront (parseOBJ, parseMTL) where
+module Wavefront (parseOBJ, parseMTL, main) where
 
 
 
@@ -42,6 +42,8 @@ import Data.Maybe (catMaybes)
 import Text.Printf (printf)
 import Control.Concurrent (threadDelay)
 import System.IO (hFlush, stdout)
+
+import System.Random
 
 
 
@@ -191,10 +193,10 @@ parseMTLRow ln
     "newmtl" -> withName Material   values -- newmtl
     _        -> Left ln
     where withChannels token (r:g:b:[]) = Right $ token (read r) (read g) (read b) -- TODO: No alpha channel (optional?) (?) (read a) 
-          withChannels _      _         = Left  $ "Pattern match failed" -- TODO: No alpha channel (optional?) (?) (read a)
+          withChannels _      _         = Left  $ "Pattern match failed"           -- TODO: No alpha channel (optional?) (?) (read a)
 
           withName token (name:[]) = Right $ token name
-          withName _      _        = Left "Patter match failed" 
+          withName _      _        = Left "Pattern match failed"
 
 
 -- Parsing utilities ------------------------------------------------------------------------------
@@ -217,6 +219,7 @@ rows = filter (\ ln -> not $ any ($ ln) [null, isComment]) . lines
 
 -- |
 -- TODO: Use readMaybe (?)
+-- TODO: Variadic 'unpacking' (or is that sinful?)
 vector :: Read r => (r -> r -> r -> b) -> [String] -> Either String b
 vector token (x:y:z:[]) = Right $ token (read x) (read y) (read z) -- TODO: Add back the Maybe wrapper (?)
 vector _      _         = Left  "Pattern match failed"
@@ -268,12 +271,11 @@ main = do
   flip mapM_ ["queen", "cube"] $ \ fn -> do
     printf "\nParsing OBJ file: %s.obj\n" fn
     model <- loadOBJ $ printf (path ++ "data/%s.obj") fn
-    printf "Found %d invalid rows in OBJ file (n comments, m blanks, o errors).\n" $ length [ 1 | Left _ <- map snd model ] --filter (==Nothing) $ model
+    printf "Found %d invalid rows in OBJ file (n comments, m blanks, o errors).\n" $ length [ 1 | Left _ <- map snd model ]
 
     promptContinue "Press any key to continue..."
 
     mapM_ print ["[" ++ show n ++ "] " ++ show token | (n, Right token) <- model ]
-    -- mapM_ print ["[" ++ show n ++ "] " ++ line | (n, Left line) <- model ]
     -- TODO: Print culprit lines (✓)
 
     promptContinue "Press any key to continue..."

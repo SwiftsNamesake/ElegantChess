@@ -34,7 +34,7 @@ module Wavefront (parseOBJ, parseMTL, main) where
 ---------------------------------------------------------------------------------------------------
 -- We'll need these
 ---------------------------------------------------------------------------------------------------
-import Data.List (isPrefixOf, groupBy)
+import Data.List (isPrefixOf, groupBy, unfoldr)
 import Data.Char (isSpace)
 import Data.Function (on)
 import Data.Maybe (catMaybes)
@@ -197,11 +197,38 @@ parseMTLRow ln
           withName _      _        = Left "Pattern match failed"
 
 
+-- | 
+-- TODO: Use map for materials (?)
+-- TODO: How to retrieve MTL data
+-- TODO: How to deal with errors, including no-parse, index errors, etc.
+-- TODO: Performance, how are 'copies' of coordinates handled (?)
+createModel :: OBJ -> ([String] -> [MTL]) -> Model
+createModel modeldata retrieve = let materials = retrieve [ name | Right (UseMTL name) <- map snd modeldata] -- Retrieve MTL data
+                                     vertices  = [ vertex   | Right (vertex@(Vertex{})) <- map snd modeldata ]
+                                     normals   = [ normal   | Right (normal@(Normal{})) <- map snd modeldata ]
+                                     textures  = [ texture  | Right (texture@(Texture{})) <- map snd modeldata ]
+                                 in error "Still under construction. Step away or put on a hard hat."
+
+
+{-let model = Model { vertices  = [ vertex   | @vertex(Vertex{})],
+                      normals   = [ normal   | @normal(Normal{})],
+                      textures  = [ texture  | @texture(Texture{})],
+                      faces     = [ face     | @face(Face{})],
+                      selects   = [ select   | @select(Vertex{})],
+                      materials = [ material | @material(Vertex{})],
+                      groups    = [ group    | @group(Vertex{})],
+                      objects   = [ object   | @object(Vertex{})] }
+-}
+
 -- Parsing utilities ------------------------------------------------------------------------------
 -- |
 -- TODO: Clean up or use existing function
+-- TODO: Rename (?)
 splitOn :: Eq a => a -> [a] -> [[a]]
-splitOn c s = filter (/=[c]) . groupBy ((==) `on` (==c)) $ s
+splitOn c s = unfoldr cut s
+  where cut [] = Nothing
+        cut xs = let (token, rest) = span (/=c) xs in Just (token, dropWhile (==c) rest)
+-- splitOn c s = filter (/=[c]) . groupBy ((==) `on` (==c)) $ s
 
 
 -- |
@@ -227,26 +254,32 @@ vector _      _         = Left  "Pattern match failed"
 ---------------------------------------------------------------------------------------------------
 -- Functions (IO)
 ---------------------------------------------------------------------------------------------------
+-- Loading data -----------------------------------------------------------------------------------
 -- |
 -- TODO: Use bytestrings (?)
 loadOBJ :: String -> IO OBJ
 loadOBJ fn = do
-	rawOBJ <- readFile fn    --
-	return $ parseOBJ rawOBJ --
+  rawOBJ <- readFile fn    --
+  return $ parseOBJ rawOBJ --
 
 
 -- |
 -- TODO: Use bytestrings (?)
 loadMTL :: String -> IO MTL
 loadMTL fn = do
-	rawMTL <- readFile fn    --
-	return $ parseMTL rawMTL --
+  rawMTL <- readFile fn    --
+  return $ parseMTL rawMTL --
 
 
 -- |
--- loadModel
+-- Loads an OBJ model from file, including associated materials
+loadModel :: String -> IO Model
+loadModel fn = do
+  obj <- loadOBJ fn
+  return $ error "Not done yet"
 
 
+--  -----------------------------------------------------------------------------------
 -- | 
 promptContinue :: String -> IO ()
 promptContinue prompt = do

@@ -37,7 +37,7 @@ module Wavefront (parseOBJ, parseMTL, main) where
 import Data.List (isPrefixOf, groupBy, unfoldr)
 import Data.Char (isSpace)
 import Data.Function (on)
-import Data.Maybe (catMaybes)
+import Data.Either (rights)
 
 import Text.Printf (printf)
 import Control.Concurrent (threadDelay)
@@ -203,10 +203,11 @@ parseMTLRow ln
 -- TODO: How to deal with errors, including no-parse, index errors, etc.
 -- TODO: Performance, how are 'copies' of coordinates handled (?)
 createModel :: OBJ -> ([String] -> [MTL]) -> Model
-createModel modeldata retrieve = let materials = retrieve [ name | Right (UseMTL name) <- map snd modeldata] -- Retrieve MTL data
-                                     vertices  = [ vertex   | Right (vertex@(Vertex{})) <- map snd modeldata ]
-                                     normals   = [ normal   | Right (normal@(Normal{})) <- map snd modeldata ]
-                                     textures  = [ texture  | Right (texture@(Texture{})) <- map snd modeldata ]
+createModel modeldata retrieve = let tokens    = rights . map snd $ modeldata -- TODO: Vat do vee du viz ze dissidents, kommandant?
+                                     materials = retrieve [ name | UseMTL name <- tokens] -- Retrieve MTL data
+                                     vertices  = [ vertex  | vertex@(Vertex{})   <- tokens ]
+                                     normals   = [ normal  | normal@(Normal{})   <- tokens ]
+                                     textures  = [ texture | texture@(Texture{}) <- tokens ]
                                  in error "Still under construction. Step away or put on a hard hat."
 
 

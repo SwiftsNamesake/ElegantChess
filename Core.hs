@@ -375,7 +375,7 @@ runLogicTests = do
 	      showMovesFor row col = maybe pass (\ sqr -> showHeader sqr >> printCols >> showMoves row col) $ at board (Row row, Col col) --(Square p c) <- at board row col
 	      marker orow ocol row col | (Row row, Col col) `elem` moves board orow ocol = '█' -- Possible move
 	                               | orow == row && ocol == col                      = 'O' -- Starting position
-	                               | otherwise                                       = 'X' -- Empty square
+	                               | otherwise                                       = '.' -- Empty square
 	                                                                       
 
 

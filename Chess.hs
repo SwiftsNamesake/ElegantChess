@@ -141,7 +141,7 @@ mainDebug :: IO ()
 mainDebug = do
 	image <- loadBMP "assets/pieces.bmp"
 	display window white image
-	where size = (2*6*72+2*10, 94+2*10) -- Each glyph is (currently) 72x94 pixels. There are 12 glyphs in total (two per colour). Includes padding.
+	where size = (2*6*72+2*10, 94+2*10) -- Each glyph is (currently) 72x94 pixels. There are twelve glyphs in total (six per colour). Includes padding.
 	      pos  = (0, 0)                 -- Position of the window's top left corner in relation to the monitor
 	      window = InWindow "Pieces" size pos --
 
@@ -152,7 +152,7 @@ mainDebug = do
 -- TODO: Decide on a framework for the frontend (GLUT, OpenGL, Cairo, SDL)
 main :: IO ()
 main = do
-	mainDebug
 	mainGloss
+	mainDebug
 	--putStrLn "Hello World"
 	--putStr . visualise $ Square Rook Black

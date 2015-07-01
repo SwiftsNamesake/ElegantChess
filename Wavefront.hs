@@ -15,12 +15,20 @@
 --        - Additional attributes (lighting, splines, etc.)
 --        - FFI
 --        - Debugging information (line number, missing file, missing values, etc.)
---        - Proper Haddock coverate, including headers
+--        - Proper Haddock coverage, including headers
 --        - Model type
 --        - Caching (?)
 --        - Performance, profiling, optimisations
 --        - PrintfArg instances for the types defined in this module
 --        - Decide on a public interface (exports)
+--        - Break out
+--          -- Create separate Cabal project
+--          -- Move to modules folder
+--          -- Create separate GitHub repo
+--
+--        - Parser bugs
+--          -- Negative coordinates enclosed in parentheses
+--        -  
 
 -- SPEC | -
 --        -
@@ -236,6 +244,11 @@ splitOn c s = unfoldr cut s
 -- TODO: Drop comments at the end of a line (?)
 isComment :: String -> Bool
 isComment = isPrefixOf "#" . dropWhile isSpace
+
+
+-- |
+dropComment :: String -> String
+dropComment = takeWhile (/= '#')
 
 
 -- |

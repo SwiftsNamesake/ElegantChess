@@ -41,6 +41,7 @@ oneButton = do
                 containerBorderWidth := 10]
 
 	set button [buttonLabel := "Hola Mundo"]
+	-- TODO: Refactor on with backticks (?)
 	on button buttonActivated (hello button)
 	on window objectDestroy mainQuit
 	window `on` configureEvent $ do

@@ -12,7 +12,7 @@
 --        - Organize in modules and sub-modules (eg. Chess.Graphics and Chess.Core) (?)
 --        - Cabal and Haddock (?)
 --        - UI (Label, Entry, Button, etc.)
---        - Configrable Chess sets (different models)
+--        - Configurable Chess sets (different models)
 --        - Custom chess set (perhaps with a theme)
 --        - Rename Main (eg. play, main) (?)
 
@@ -34,7 +34,7 @@ import qualified Data.Set as Set
 
 import Control.Monad (when)
 
-import Graphics.Gloss (display) -- hiding (Vector)
+import Graphics.Gloss (display, loadBMP) -- hiding (Vector)
 import Graphics.Gloss.Interface.IO.Game -- hiding (Vector, color, Color) -- TODO: Use pure (?)
 
 import Text.Printf

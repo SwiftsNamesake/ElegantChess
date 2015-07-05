@@ -35,7 +35,7 @@
 
 
 
-module Wavefront (parseOBJ, parseMTL, main) where
+module Chess.Wavefront (parseOBJ, parseMTL, main) where
 
 
 
@@ -155,6 +155,8 @@ parseOBJ = zip [1..] . map parseOBJRow . lines -- . rows
 -- TODO: Dealing with MTL definitions (pass in names, MTL value, return list of MTL dependencies)
 -- TODO: Take 1-based indexing into account straight away (?)
 -- TODO: Deal with absent texture and normal indices
+-- TODO: Strip trailing comments
+-- TODO: Don't ignore leftover values (errors?)
 --
 parseOBJRow :: String -> OBJRow -- Maybe OBJToken
 parseOBJRow ln
@@ -169,7 +171,7 @@ parseOBJRow ln
     -- TODO: Handle invalid data (✓)
     -- TODO: Capture invalid vertex definitions (cf. sequence) (✓)
     -- ("Invalid vertex: "++) .
-    "f"  -> either (Left . const ln) (Right . Face) . sequence . map (vector triplet . splitOn '/') $ values -- Face
+    "f"  -> either (Left . const ln) (Right . Face) . sequence . map (vector triplet . split '/') $ values -- Face
     "g"  -> Right . Group  $ values -- Group
     "o"  -> Right . Object $ values -- Object
     "s"  -> Left ln -- Smooth shading
@@ -229,17 +231,9 @@ createModel modeldata retrieve = let tokens    = rights . map snd $ modeldata --
                       objects   = [ object   | @object(Vertex{})] }
 -}
 
+
+
 -- Parsing utilities ------------------------------------------------------------------------------
--- |
--- TODO: Clean up or use existing function
--- TODO: Rename (?)
-splitOn :: Eq a => a -> [a] -> [[a]]
-splitOn c s = unfoldr cut s
-  where cut [] = Nothing
-        cut xs = let (token, rest) = span (/=c) xs in Just (token, dropWhile (==c) rest)
--- splitOn c s = filter (/=[c]) . groupBy ((==) `on` (==c)) $ s
-
-
 -- |
 -- TODO: Drop comments at the end of a line (?)
 isComment :: String -> Bool
@@ -262,6 +256,13 @@ rows = filter (\ ln -> not $ any ($ ln) [null, isComment]) . lines
 vector :: Read r => (r -> r -> r -> b) -> [String] -> Either String b
 vector token (x:y:z:[]) = Right $ token (read x) (read y) (read z) -- TODO: Add back the Maybe wrapper (?)
 vector _      _         = Left  "Pattern match failed"
+
+
+
+-- General utilities ------------------------------------------------------------------------------
+-- | Counts the number of elements that satisfy the predicate
+count :: Integral n => (a -> Bool) -> [a] -> n
+count p = length . filter p
 
 
 
@@ -293,7 +294,7 @@ loadModel fn = do
   return $ error "Not done yet"
 
 
---  -----------------------------------------------------------------------------------
+-- IO utilities -----------------------------------------------------------------------------------
 -- | 
 promptContinue :: String -> IO ()
 promptContinue prompt = do
@@ -313,10 +314,10 @@ main = do
 
   let path = "C:/Users/Jonatan/Desktop/Python/experiments/WaveFront/"
   
-  flip mapM_ ["queen", "cube"] $ \ fn -> do
+  forM_ ["queen", "cube"] $ \ fn -> do
     printf "\nParsing OBJ file: %s.obj\n" fn
     model <- loadOBJ $ printf (path ++ "data/%s.obj") fn
-    printf "Found %d invalid rows in OBJ file (n comments, m blanks, o errors).\n" $ length [ 1 | Left _ <- map snd model ]
+    printf "Found %d invalid rows in OBJ file (m comments, n blanks, o errors).\n" (count isLeft $ map snd model)
 
     promptContinue "Press any key to continue..."
 
@@ -327,7 +328,7 @@ main = do
 
     printf "\nParsing MTL file: %s.mtl\n" fn
     materials <- loadMTL $ printf (path ++ "data/%s.mtl") fn
-    printf "Found %d invalid rows in MTL file (n comments, m blanks, o errors).\n" $ length [ 1 | Left _ <- map snd materials ]
+    printf "Found %d invalid rows in MTL file (m comments, n blanks, o errors).\n" (count isLeft $ map snd materials)
     mapM_ print ["[" ++ show n ++ "] " ++ show token | (n, Right token) <- materials ]
 
     promptContinue "Press any key to continue..."

@@ -1,0 +1,34 @@
+
+package: bmp-1.2.5.2
+os: windows
+arch: x86_64
+compiler: ghc-7.8.3
+client: cabal-install-1.22.4.0
+dependencies: bytestring-0.10.4.0 binary-0.7.1.0 base-4.7.0.1
+install-outcome: InstallOk
+docs-outcome: NotTried
+tests-outcome: NotTried
+
+package: gloss-1.9.2.1
+os: windows
+arch: x86_64
+compiler: ghc-7.8.3
+client: cabal-install-1.22.4.0
+flags: glut -glfw -explicitbackend
+dependencies: gloss-rendering-1.9.2.1 ghc-prim-0.3.1.0
+              containers-0.5.5.1 bytestring-0.10.4.0 bmp-1.2.5.2 base-4.7.0.1
+              OpenGL-2.9.2.0 GLUT-2.5.1.1
+install-outcome: InstallOk
+docs-outcome: NotTried
+tests-outcome: NotTried
+
+package: gloss-rendering-1.9.2.1
+os: windows
+arch: x86_64
+compiler: ghc-7.8.3
+client: cabal-install-1.22.4.0
+dependencies: containers-0.5.5.1 bytestring-0.10.4.0 bmp-1.2.5.2
+              base-4.7.0.1 OpenGL-2.9.2.0 GLUT-2.5.1.1
+install-outcome: InstallOk
+docs-outcome: NotTried
+tests-outcome: NotTried

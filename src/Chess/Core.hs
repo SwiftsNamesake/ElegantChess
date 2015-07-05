@@ -17,7 +17,7 @@
 
 
 
-module Core where
+module Chess.Core where
 
 
 
@@ -81,12 +81,12 @@ black = "♖♘♗♕♔♙" -- All black pieces
 ----------------------------------------------------------------------------------------------------
 -- Auxiliary
 ----------------------------------------------------------------------------------------------------
--- Replaces the element at the specified index with a new value
+-- | Replaces the element at the specified index with a new value
 replace :: (Int, a) -> [a] -> [a]
 replace (i, x) xs = let (before, after) = splitAt i xs in before ++ x : tail after
 
 
---
+-- |
 -- TODO: Uncurrying multiple-argument functions
 update :: [(Int, a)] -> [a] -> [a]
 update pairs xs = foldr replace xs pairs
@@ -100,14 +100,15 @@ update pairs xs = foldr replace xs pairs
 --
 -- TODO: Simplify (perhaps with lenses)
 -- TODO: More powerful query and update functions
---
+-- TODO: Return result instead of a new Board (eg. 'dry' update, success or failure, etc.)
+-- |
 move :: Board -> Point -> Point -> Board
 move board from to = [[Nothing]]
 	where source = at board from
 	      target = at board to
 
 
---
+-- |
 at :: Board -> Point -> Square
 at board (Row row, Col col) = board !! row !! col
 
@@ -117,45 +118,45 @@ at board (Row row, Col col) = board !! row !! col
 -- TODO: Consistent function signatures (when feasible)
 -- (eg. curried or uncurried coordinates, taking a Maybe Square or a column and row)
 
--- Row and column is within range
+-- | Row and column is within range
 inside :: Point -> Bool
 inside (Row row, Col col) = (row >= 0) && (row < 8) && (col >= 0) && (col < 8)
 
 
--- Inverse of inside (cf. above)
+-- | Inverse of inside (cf. above)
 notInside :: Point -> Bool
 notInside point = not $ inside point
 
 
--- Determines if a square is occuped (ie. not empty)
+-- | Determines if a square is occuped (ie. not empty)
 occupied :: Square -> Bool
 occupied = isJust
 
 
--- hasEnemy
+-- | hasEnemy
 -- Compares the colours of the pieces on two (possibly empty) Squares (True when unequal).
 -- TODO: Flesh out comment, more descriptive argument names
 hasEnemy :: Square -> Square -> Bool
 hasEnemy a b = maybe False id $ liftM2 ((/=) `on` colour) a b
 
 
--- Inverse of hasEnemy (cf. above)
+-- | Inverse of hasEnemy (cf. above)
 notEnemy :: Square -> Square -> Bool
 notEnemy a b = not $ hasEnemy a b
 
 
--- hasAlly
+-- | hasAlly
 -- Compares the colours of the pieces on two (possibly empty) Squares (True when equal).
 hasAlly :: Square -> Square -> Bool
 hasAlly a b = maybe False id $ liftM2 ((==) `on` colour) a b
 
 
--- Inverse of hasAlly (cf. above)
+-- | Inverse of hasAlly (cf. above)
 notAlly :: Square -> Square -> Bool
 notAlly a b = not $ hasAlly a b
 
 
--- Validates a move from one Square to a specific row and column.
+-- | Validates a move from one Square to a specific row and column.
 -- 
 -- Accepts a Board, Square and Point. A move is valid iff the Square at the given Point on the Board is either
 -- empty or occupied by an enemy piece.
@@ -168,10 +169,10 @@ validMove :: Board -> Square -> Point -> Bool
 validMove board from to = inside to && notAlly from (at board to)
 
 
--- Validates a single step in a path of multiple steps.
+-- | Validates a single step in a path of multiple steps.
 --
--- This function takes a Board, a coordinate (row, col) indicating the next position, and the direction we're stepping in (delta row, delta row)
--- A step from one square to another (as indicates by the position and direction) is valid if the latter is not occupied by an allied piece,
+-- This function takes a Board, a coordinate (row, col) indicating the next position, and the direction we're stepping in (delta col, delta row)
+-- A step from one square to another (as indicated by the position and direction) is valid if the latter is not occupied by an allied piece,
 -- and if the square we're about to leave wasn't previously occupied by an enemy piece (since one cannot continue moving after a capture).
 -- Furthermore, one clearly cannot move outside the board, so the function also performs bounds checking.
 --
@@ -182,19 +183,19 @@ validStep board (Row dRow, Col dCol) (Row row, Col col) = validMove board from (
 	      to   = at board (Row row, Col col) -- Should not be evaluated if bounds checking fails
 
 
--- Consumes a path (list of absolute row and column pairs) until the first invalid move
+-- | Consumes a path (list of absolute row and column pairs) until the first invalid move
 -- TODO: Flesh out comment
 takeValid :: Board -> Point -> [Point] -> [Point]
 takeValid board delta steps = takeWhile (validStep board delta) $ steps
 
 
--- Creates a path (list of relative steps) from the given range, origin and direction
+-- | Creates a path (list of relative steps) from the given range, origin and direction
 -- TODO: Accept an int (length) instead of a list (range)
 path :: [Int] -> Point -> Point -> [Point]
 path range (Row dRow, Col dCol) (Row row, Col col) = map step range -- TODO: Extract path logic
 	where step n = (Row $ dRow*n+row, Col $ dCol*n+col)             -- Position at nth step (TODO: Rename)
 
--- 
+-- | 
 -- TODO: Include argument (?)
 -- TODO: Verify
 -- TODO: Add comment
@@ -212,7 +213,7 @@ filterInvalid board square moves = filter (validMove board square) moves
 --pawn =
 
 
--- Initial row of a pawn
+-- | Initial row of a pawn
 -- TODO: Generalize to startrow and direction
 startrow :: Unit -> Row
 startrow pawn = case colour pawn of
@@ -222,7 +223,7 @@ startrow pawn = case colour pawn of
 
 -- TODO: transforming functions taking Square to function taking col row and board
 
--- Creates paths based on a list of (row, column) pairs and an initial position
+-- | Creates paths based on a list of (row, column) pairs and an initial position
 -- These pairs indicate the direction of each path
 -- Each path is subsequently truncated at the first invalid step
 -- The paths are then flattened into a single list of absolute (row, col) coordinates
@@ -232,7 +233,7 @@ createPaths board origin deltas = concat $ map createPath deltas
 	where createPath delta = takeValid board delta $ path [1..7] delta origin
 
 
---
+-- |
 -- TODO: Add comments
 -- TODO: Sort out naming conventions (will be easier once Square has become Maybe Unit or Maybe Piece)
 -- TODO: Simplify
@@ -258,7 +259,7 @@ pieceMoves board from@(Row row, Col col) unit = case unit of
 	             | otherwise            = -1
 
 
---
+-- |
 -- TODO: Extract auxiliary definitions
 -- TODO: Use Complex Int Int (?)
 -- TODO: Rename, verb (?)
@@ -270,19 +271,19 @@ moves board row col = let square = at board (Row row, Col col)
 
 
 -- Lenses -----------------------------------------------------------------------------------------
--- 
+-- |
 -- TODO: Spelling (?)
 colour :: Unit -> Colour
 colour (Unit _ col) = col
 
 
--- 
+-- |
 piece :: Unit -> Piece
 piece (Unit piece _) = piece
 
 
 -- Transformations ----------------------------------------------------------------------------------
---
+-- |
 -- TODO: Simplify
 -- TODO: Rename piece argument (clashes with function) (?)
 showUnit :: Unit -> String
@@ -301,8 +302,7 @@ showUnit (Unit unit colour) = case unit of
 -- showSquare
 
 
---
---
+-- |
 -- TODO: Simplify
 -- TODO: Maybe Square (?)
 -- TODO: Char or string
@@ -324,7 +324,7 @@ readSquare c = liftM2 (,) piece col >>= (return . uncurry Unit)
           | otherwise      = Nothing
 
 
---
+-- |
 -- TODO: Bounds checking (?)
 readBoard :: String -> Board
 readBoard str = map (map readSquare) . lines $ str
@@ -335,13 +335,13 @@ readBoard str = map (map readSquare) . lines $ str
 -- 
 ----------------------------------------------------------------------------------------------------
 
---
+-- |
 -- TODO: Create 2D list or vector instead (?)
 grid :: Int -> Int -> (Int -> Int -> a) -> [a]
 grid rw cl f = [f r c | r <- [0..rw-1], c <- [0..cl-1]]
 
 
--- Logic and Graphics tests
+-- | Logic and Graphics tests
 mainDebug :: IO ()
 mainDebug = do
 	return ()
@@ -351,6 +351,7 @@ mainDebug = do
 ----------------------------------------------------------------------------------------------------
 -- Verification
 ----------------------------------------------------------------------------------------------------
+-- |
 runLogicTests :: IO ()
 runLogicTests = do
 	print "Everything seems to be in order."
@@ -382,6 +383,7 @@ runLogicTests = do
 ----------------------------------------------------------------------------------------------------
 -- Entry point
 ----------------------------------------------------------------------------------------------------
+-- |
 main :: IO ()
 main = do
 	runLogicTests
